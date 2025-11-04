@@ -1,0 +1,50 @@
+{
+  "appName": {
+    "en": "Ecliptic",
+    "de": "Ecliptic"
+  },
+  "appSubtitle": {
+    "en": "Core",
+    "de": "Core"
+  },
+  "dataStores": {
+    "en": "Data Stores",
+    "de": "Datenspeicher"
+  },
+  "addTable": {
+    "en": "Add Table",
+    "de": "Tabelle hinzufügen"
+  },
+  "renameTable": {
+    "en": "Rename Table",
+    "de": "Tabelle umbenennen"
+  },
+  "deleteTable": {
+    "en": "Delete Table",
+    "de": "Tabelle löschen"
+  },
+  "renameDatastore": {
+    "en": "Rename Datastore",
+    "de": "Datenspeicher umbenennen"
+  },
+  "deleteDatastore": {
+    "en": "Delete Datastore",
+    "de": "Datenspeicher löschen"
+  },
+  "profile": {
+    "en": "Profile",
+    "de": "Profil"
+  },
+  "settings": {
+    "en": "Settings",
+    "de": "Einstellungen"
+  },
+  "logOut": {
+    "en": "Log out",
+    "de": "Abmelden"
+  },
+  "guest": {
+    "en": "Guest",
+    "de": "Gast"
+  }
+}

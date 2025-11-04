@@ -1,0 +1,53 @@
+# TODO
+docs/todo.md
+
+# CLAUDE
+/.claude
+/.claude-plugin
+/claude-plugin
+CLAUDE.md
+
+# dbs
+*.db
+*.db-shm
+*.db-wal
+datastores/
+
+# dependencies (bun install)
+node_modules
+
+# output
+out
+dist
+*.tgz
+server
+
+# code coverage
+coverage
+*.lcov
+
+# logs
+logs
+_.log
+report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+
+# dotenv environment variable files
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# caches
+.eslintcache
+.cache
+*.tsbuildinfo
+
+# IntelliJ based IDEs
+.idea
+
+# Finder (MacOS) folder config
+.DS_Store
+
+# Postgres
+postgres_data/

@@ -1,0 +1,6 @@
+{
+  "bun.test.enable": true,
+  "bun.test.showCodeLens": true,
+  "testing.automaticallyOpenPeekView": "never"
+}
+
