@@ -87,12 +87,12 @@ export const auth = betterAuth({
     }
   },
   socialProviders: {
-    github: {
-      clientId: process.env.GITHUB_CLIENT_ID,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      disableSignUp: process.env.ENABLE_SIGNUP === 'FALSE',
-      redirectURI: process.env.BASE_URL + '/api/v1/auth/callback/github',
-    }
+    // github: {
+    //   clientId: process.env.GITHUB_CLIENT_ID,
+    //   clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    //   disableSignUp: process.env.ENABLE_SIGNUP === 'FALSE',
+    //   redirectURI: process.env.BASE_URL + '/api/v1/auth/callback/github',
+    // }
   },
   plugins: [
     apiKey(),
