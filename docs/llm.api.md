@@ -1,160 +1,182 @@
 ## API Layer
 
-The API layer is the HTTP interface of your application. It uses **ElysiaJS** to handle routing, validation, authentication, and error responses. The API layer is the **only place** where framework-specific types (ElysiaJS) should appear.
+The API layer is the HTTP interface of your application. It uses **Bun's native HTTP server** to handle routing, validation, authentication, and error responses. The API layer is the **only place** where HTTP-specific types should appear.
 
 ### API Route Structure
 
 ```typescript
-import { Elysia, status, t } from 'elysia';
-import { mwAuthGuard } from '@server/mw/mw.auth-guard';
 import { kysely } from '@server/db';
-import { jsonError } from '@server/server-helper';
+import { tExternal } from '@server/error/t-error';
+import { resolveSession } from '@server/mw/mw.auth-guard';
+import { resolveLang } from '@server/mw/mw.lang';
+import { type BunRequest, type Serve, type Server } from 'bun';
+import { apiTypes } from './api-types';
 import { controllerName } from '@server/controllers/module.controller';
 
-export const apiModule = new Elysia({
-  prefix: '/api/v1/module',
-  name: 'apiModule'
-})
-  .use(mwAuthGuard)
-  .post(
-    '/endpoint',
-    async (ctx) => {
-      // Call controller with DTOs
-      const [result, error] = await controllerName(
-        { user: ctx.user, session: ctx.session, db: kysely },
-        ctx.body
-      );
+export const apiModule: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/module'>, Server<undefined>, Response>>> = {
+  POST: async (req, server) => {
+    // 1. Authentication
+    const session = await resolveSession(req.headers);
+    const lang = resolveLang(req.headers);
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-      ctx.set.headers['accept'] = 'application/json';
-      if (error) return status(error[1] ?? 400, jsonError(ctx, error));
+    // 2. Parse and validate request body
+    const body = await req.json();
+    const validatedBody = apiTypes['/api/v1/module'].POST.body.safeParse(body);
+    if (!validatedBody.success) return Response.json({ error: validatedBody.error.message }, { status: 400 });
 
-      return result; // Return DTO
-    },
-    {
-      auth: true,
-      body: t.Object({
-        // Validation schema
-      }),
-      detail: {
-        summary: 'Endpoint description',
-        description: 'Detailed description for OpenAPI',
-        tags: ['Module']
-      }
-    }
-  );
+    // 3. Call controller
+    const [result, error] = await controllerName(
+      { session: session.session, db: kysely },
+      validatedBody.data
+    );
+
+    // 4. Handle errors
+    if (error) return Response.json({ error: tExternal(lang, error) }, { status: 400 });
+
+    // 5. Return result
+    return Response.json(result, { status: 201 });
+  }
+};
 ```
 
 ### Key Components
 
-#### 1. Elysia Instance
+#### 1. Handler Export
 
 ```typescript
-export const apiDatastore = new Elysia({
-  prefix: '/api/v1/datastore',  // Route prefix
-  name: 'apiDatastore'           // Name for plugin system
-});
+export const apiDatastore: Partial<Record<Serve.HTTPMethod, Serve.Handler<
+  BunRequest<'/api/v1/datastore/:id'>,
+  Server<undefined>,
+  Response
+>>> = {
+  GET: async (req, server) => { /* handler */ },
+  POST: async (req, server) => { /* handler */ },
+  PATCH: async (req, server) => { /* handler */ },
+  DELETE: async (req, server) => { /* handler */ }
+};
 ```
 
 **Best Practices:**
-- Use versioned prefixes: `/api/v1/...`
-- Name your API instances for better debugging
-- Export as `const` for use in main app
+- Export as `const` object with HTTP methods as keys
+- Use Bun's native types: `BunRequest`, `Serve.Handler`, `Server`
+- Return type is always `Response` (Bun's native Response object)
+- Use `Partial<Record<>>` since not all methods may be implemented
 
-#### 2. Middleware
+#### 2. Authentication Middleware
 
 ```typescript
-.use(mwAuthGuard)
+const session = await resolveSession(req.headers);
+const lang = resolveLang(req.headers);
+if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 ```
 
-**`mwAuthGuard` Middleware:**
-- Provides authentication via Better Auth
-- Injects `user` and `session` as **DTOs** (`TUser`, `TSession`)
-- Sets default organization if none is active
-- Returns 401 on authentication failure
+**Authentication Flow:**
+- `resolveSession()` validates session from cookies/headers
+- Returns `{ user: TUser, session: TSession }` or `null`
+- `resolveLang()` extracts preferred language from headers
+- Return 401 immediately if no valid session
 
 **Usage:**
-- Add `.use(mwAuthGuard)` before routes that need authentication
-- Mark routes with `auth: true` in options
-- Access via `ctx.user` and `ctx.session`
+- Add at the start of handlers that need authentication
+- Access user and session DTOs: `session.user`, `session.session`
 
-#### 3. Route Definition
-
-```typescript
-.post('/endpoint', handler, options)
-.get('/endpoint', handler, options)
-.put('/endpoint', handler, options)
-.delete('/endpoint', handler, options)
-.patch('/endpoint', handler, options)
-```
+#### 3. Route Handlers
 
 **Route Handler Pattern:**
 
 ```typescript
-async (ctx) => {
-  // 1. Extract data from ctx (validated by Elysia)
-  const args = ctx.body;        // or ctx.params, ctx.query
-  const user = ctx.user;        // From mwAuthGuard (DTO)
-  const session = ctx.session;  // From mwAuthGuard (DTO)
+POST: async (req, server) => {
+  // 1. Authentication
+  const session = await resolveSession(req.headers);
+  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // 2. Call controller (framework-agnostic)
+  // 2. Parse body
+  const body = await req.json();
+
+  // 3. Validate with Zod
+  const validatedBody = apiTypes['/api/v1/endpoint'].POST.body.safeParse(body);
+  if (!validatedBody.success) {
+    return Response.json({ error: validatedBody.error.message }, { status: 400 });
+  }
+
+  // 4. Call controller (framework-agnostic)
   const [result, error] = await controllerName(
-    { user, session, db: kysely },
-    args
+    { session: session.session, db: kysely },
+    validatedBody.data
   );
 
-  // 3. Handle errors
-  ctx.set.headers['accept'] = 'application/json';
-  if (error) return status(error[1] ?? 400, jsonError(ctx, error));
+  // 5. Handle errors
+  if (error) {
+    const lang = resolveLang(req.headers);
+    return Response.json({ error: tExternal(lang, error) }, { status: 400 });
+  }
 
-  // 4. Return DTO
-  return result;
+  // 6. Return DTO
+  return Response.json(result, { status: 201 });
 }
 ```
 
-#### 4. Request Validation
+#### 4. Request Validation with Zod
 
-ElysiaJS uses `t` schema for compile-time and runtime validation:
+All validation schemas are defined in `api-types.ts`:
 
 ```typescript
-{
-  body: t.Object({
-    internalName: t.String({ minLength: 1, maxLength: 255 }),
-    provider: t.Union([t.Literal('sqlite'), t.Literal('turso')]),
-    region: t.Optional(t.String()),
-    count: t.Number({ minimum: 1, maximum: 100 }),
-    tags: t.Array(t.String()),
-    metadata: t.Record(t.String(), t.Any())
-  })
-}
+// api-types.ts
+export const apiTypes = {
+  '/api/v1/datastore/:id': {
+    params: {
+      id: z.string().min(1)
+    },
+    PATCH: {
+      body: z.object({
+        internalName: z.string().min(1).max(255),
+      })
+    }
+  },
+  '/api/v1/mcp-keys': {
+    POST: {
+      body: z.object({
+        name: z.string().min(1),
+        permissions: z.array(z.object({
+          actionId: z.string(),
+          targetId: z.string()
+        }))
+      })
+    }
+  }
+};
 ```
 
 **Common Validation Types:**
-- `t.String({ minLength, maxLength, pattern, format })` - String validation
-- `t.Number({ minimum, maximum })` - Number validation
-- `t.Boolean()` - Boolean
-- `t.Array(t.String())` - Array of strings
-- `t.Object({ ... })` - Object with schema
-- `t.Union([t.Literal('a'), t.Literal('b')])` - Enum-like union
-- `t.Optional(t.String())` - Optional field
-- `t.Record(t.String(), t.Any())` - Key-value map
+- `z.string().min(1).max(255)` - String with length constraints
+- `z.number().min(0).max(100)` - Number with range
+- `z.boolean()` - Boolean
+- `z.array(z.string())` - Array of strings
+- `z.object({ ... })` - Object with schema
+- `z.union([z.literal('a'), z.literal('b')])` - Enum-like union
+- `z.optional(z.string())` - Optional field
 
 **Where to Validate:**
-- `body` - Request body (POST/PUT/PATCH)
-- `params` - URL parameters (`/user/:id`)
-- `query` - Query strings (`?search=term`)
-- `headers` - Request headers
+- Define all schemas centrally in `api-types.ts`
+- Reference them in handlers: `apiTypes['/api/v1/endpoint'].METHOD.body.safeParse(body)`
+- Validate params, body, query as needed
 
 #### 5. Error Handling
 
 ```typescript
-if (error) return status(error[1] ?? 400, jsonError(ctx, error));
+if (error) {
+  return Response.json(
+    { error: tExternal(lang, error) },
+    { status: error.statusCode || 400 }
+  );
+}
 ```
 
-**`jsonError` Helper:**
-- Converts `TErrorStruct` to standardized JSON response
-- Logs errors to database if `shouldLog: true`
-- Returns format: `[null, { code: string, message: string }]`
-- Extracts user-facing message using `tExternal()`
+**`tExternal` Helper:**
+- Converts `TErrorStruct` to user-facing error message
+- Supports internationalization via `lang` parameter
+- Returns localized error string
 
 **Response Format:**
 ```typescript
@@ -162,82 +184,96 @@ if (error) return status(error[1] ?? 400, jsonError(ctx, error));
 { ...result }
 
 // Error
-[null, {
-  code: "CONTROLLER.DATASTORE.CREATE.FAILED",
-  message: "Failed to create datastore"
-}]
+{ error: "User-facing error message" }
 ```
 
 **Status Codes:**
-- Comes from `error[1]` (second element of `TErrorStruct`)
-- Falls back to `400` if not specified
-- Use `status()` from Elysia to set HTTP status
+- 200: Success
+- 201: Created
+- 400: Bad Request (validation/business logic errors)
+- 401: Unauthorized (missing/invalid session)
+- 404: Not Found
+- 500: Internal Server Error
 
-#### 6. OpenAPI Documentation
+#### 6. URL Parameters
 
 ```typescript
-{
-  detail: {
-    summary: 'Create a new datastore',
-    description: 'Creates a new SQLite database in the filesystem and tracks it in the database',
-    tags: ['Datastore']
+GET: async (req, server) => {
+  const session = await resolveSession(req.headers);
+  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Access route params from req.params
+  const datastoreId = req.params.id;
+
+  const [result, error] = await getDatastoreController(
+    { session: session.session, db: kysely },
+    { id: datastoreId }
+  );
+
+  if (error) {
+    const lang = resolveLang(req.headers);
+    return Response.json({ error: tExternal(lang, error) }, { status: 404 });
   }
+
+  return Response.json(result);
 }
 ```
 
-**Best Practices:**
-- `summary` - Short one-line description
-- `description` - Detailed multi-line explanation
-- `tags` - Group related endpoints (used in Swagger UI)
-- Elysia generates OpenAPI spec automatically from validation schema
-
 ### Complete Example
 
-See `@src/api/api.datastore.ts` for reference:
+See `src/api/api.datastore.:id.ts` for reference:
 
 ```typescript
-import { Elysia, status, t } from 'elysia';
-import { mwAuthGuard } from '@server/mw/mw.auth-guard';
-import { createDatastoreController } from '@server/controllers/datastore.controller';
+import { renameDatastoreController } from '@server/controllers/ctrl.datastore.rename';
+import { dropDatastoreController } from '@server/controllers/ctrl.datastore.drop';
 import { kysely } from '@server/db';
-import { jsonError } from '@server/server-helper';
+import { tExternal } from '@server/error/t-error';
+import { resolveSession } from '@server/mw/mw.auth-guard';
+import { resolveLang } from '@server/mw/mw.lang';
+import type { BunRequest, Serve, Server } from 'bun';
+import { apiTypes } from './api-types';
 
-export const apiDatastore = new Elysia({
-  prefix: '/api/v1/datastore',
-  name: 'apiDatastore'
-})
-  .use(mwAuthGuard)
-  .post(
-    '',
-    async (ctx) => {
-      // Call controller with DTOs
-      const [result, error] = await createDatastoreController(
-        {
-          user: ctx.user,      // TUser (DTO from middleware)
-          session: ctx.session, // TSession (DTO from middleware)
-          db: kysely           // Database connection
-        },
-        ctx.body               // Validated request body
-      );
+export const apiDatastoreId: Partial<Record<
+  Serve.HTTPMethod,
+  Serve.Handler<BunRequest<'/api/v1/datastore/:id'>, Server<undefined>, Response>
+>> = {
+  PATCH: async (req, server) => {
+    const session = await resolveSession(req.headers);
+    const lang = resolveLang(req.headers);
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-      ctx.set.headers['accept'] = 'application/json';
-      if (error) return status(error[1] ?? 400, jsonError(ctx, error));
+    const body = await req.json();
+    const validatedBody = apiTypes['/api/v1/datastore/:id'].PATCH.body.safeParse(body);
 
-      return result; // TDatastore (DTO from controller)
-    },
-    {
-      auth: true,
-      body: t.Object({
-        internalName: t.String({ minLength: 1, maxLength: 255 }),
-        provider: t.Union([t.Literal('sqlite')]),
-      }),
-      detail: {
-        summary: 'Create a new datastore',
-        description: 'Creates a new SQLite database in the filesystem and tracks it in the database',
-        tags: ['Datastore']
-      }
+    if (!validatedBody.success) {
+      return Response.json({ error: validatedBody.error.message }, { status: 400 });
     }
-  );
+
+    const [result, error] = await renameDatastoreController(
+      { session: session.session, db: kysely },
+      { id: req.params.id, internalName: validatedBody.data.internalName }
+    );
+
+    if (error) return Response.json({ error: tExternal(lang, error) }, { status: 400 });
+
+    return Response.json(result, { status: 201 });
+  },
+
+  DELETE: async (req, server) => {
+    const session = await resolveSession(req.headers);
+    const lang = resolveLang(req.headers);
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const [result, error] = await dropDatastoreController(
+      { session: session.session, db: kysely },
+      { id: req.params.id }
+    );
+
+    if (error) return Response.json({ error: tExternal(lang, error) }, { status: 400 });
+
+    return Response.json(result, { status: 200 });
+  }
+};
 ```
 
 ### Separation of Concerns
@@ -245,9 +281,8 @@ export const apiDatastore = new Elysia({
 **API Layer Responsibilities:**
 - HTTP routing and method handling
 - Request validation (schema, types, format)
-- Authentication and authorization (middleware)
+- Authentication and authorization
 - Error response formatting
-- OpenAPI documentation
 - Converting HTTP requests to controller calls
 
 **What API Layer Does NOT Do:**
@@ -255,94 +290,81 @@ export const apiDatastore = new Elysia({
 - Database operations (use controllers/subroutines)
 - Complex validation (uniqueness checks, business rules → controller)
 
-### Integrating with Main App
-
-```typescript
-// src/index.tsx
-import { Elysia } from 'elysia';
-import { apiDatastore } from './api/api.datastore';
-import { apiData } from './api/api.data';
-
-const app = new Elysia()
-  .use(apiDatastore)
-  .use(apiData)
-  .listen(3000);
-```
-
-**Plugin System:**
-- Each API module is an Elysia plugin
-- Use `.use()` to compose multiple API modules
-- Name your plugins for better error messages
-
-### Route Parameters
-
-```typescript
-.get(
-  '/:id',
-  async (ctx) => {
-    const datastoreId = ctx.params.id;
-
-    const [result, error] = await getDatastoreController(
-      { user: ctx.user, session: ctx.session, db: kysely },
-      { id: datastoreId }
-    );
-
-    if (error) return status(error[1] ?? 404, jsonError(ctx, error));
-    return result;
-  },
-  {
-    auth: true,
-    params: t.Object({
-      id: t.String({ minLength: 1 })
-    }),
-    detail: {
-      summary: 'Get datastore by ID',
-      tags: ['Datastore']
-    }
-  }
-);
-```
-
 ### Query Parameters
 
 ```typescript
-.get(
-  '/search',
-  async (ctx) => {
-    const { query, limit, offset } = ctx.query;
+GET: async (req, server) => {
+  const session = await resolveSession(req.headers);
+  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const [result, error] = await searchDatastoresController(
-      { user: ctx.user, session: ctx.session, db: kysely },
-      { query, limit, offset }
-    );
+  // Parse query parameters from URL
+  const query = new URLSearchParams(req.url.split('?')[1]);
 
-    if (error) return status(error[1] ?? 400, jsonError(ctx, error));
-    return result;
-  },
-  {
-    auth: true,
-    query: t.Object({
-      query: t.String({ minLength: 1 }),
-      limit: t.Optional(t.Number({ minimum: 1, maximum: 100, default: 10 })),
-      offset: t.Optional(t.Number({ minimum: 0, default: 0 }))
-    }),
-    detail: {
-      summary: 'Search datastores',
-      tags: ['Datastore']
+  // Convert to object
+  const queryRecord: Record<string, string | string[]> = {};
+  for (const [key, value] of query.entries()) {
+    if (queryRecord[key]) {
+      // Handle duplicate keys by converting to array
+      if (Array.isArray(queryRecord[key])) {
+        (queryRecord[key] as string[]).push(value);
+      } else {
+        queryRecord[key] = [queryRecord[key] as string, value];
+      }
+    } else {
+      queryRecord[key] = value;
     }
   }
-);
+
+  // Extract specific query params
+  const limit = query.get('limit') ? Math.min(Math.max(Number(query.get('limit')), 1), 1000) : 50;
+  const offset = query.get('offset') ? Number(query.get('offset')) : 0;
+
+  const [result, error] = await searchDatastoresController(
+    { session: session.session, db: kysely },
+    { limit, offset }
+  );
+
+  if (error) {
+    const lang = resolveLang(req.headers);
+    return Response.json({ error: tExternal(lang, error) }, { status: 400 });
+  }
+
+  return Response.json(result);
+}
 ```
 
 ### Response Headers
 
 ```typescript
-async (ctx) => {
-  // Set response headers
-  ctx.set.headers['accept'] = 'application/json';
-  ctx.set.headers['cache-control'] = 'no-store';
+GET: async (req, server) => {
+  // ... handler logic
 
-  // ... rest of handler
+  // Create response with custom headers
+  const response = new Response(JSON.stringify(result), {
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Range': `0-49/1234`,
+      'Cache-Control': 'no-store'
+    }
+  });
+
+  return response;
+}
+```
+
+**Example: Content-Range for Pagination (PostgREST style)**
+
+```typescript
+POST: async (req, server) => {
+  // ... insert logic
+
+  const response = new Response(JSON.stringify(result), {
+    headers: {
+      'Content-Range': `*/${result.inserted}` // Insert format: */count
+    }
+  });
+
+  return response;
 }
 ```
 
@@ -351,36 +373,37 @@ async (ctx) => {
 #### Public Routes (No Auth)
 
 ```typescript
-.get(
-  '/public',
-  async (ctx) => {
-    return { message: 'Public data' };
-  },
-  {
-    // No auth: true - this route is public
+export const apiPublic: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/public'>, Server<undefined>, Response>>> = {
+  GET: async (req, server) => {
+    // No authentication check
+    return Response.json({ message: 'Public data' });
   }
-);
+};
 ```
 
 #### Protected Routes (Auth Required)
 
 ```typescript
-.post(
-  '/protected',
-  async (ctx) => {
-    // ctx.user and ctx.session available here
+export const apiProtected: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/protected'>, Server<undefined>, Response>>> = {
+  POST: async (req, server) => {
+    // Authentication required
+    const session = await resolveSession(req.headers);
+    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+    // session.user and session.session available here
     const [result, error] = await controllerName(
-      { user: ctx.user, session: ctx.session, db: kysely },
-      ctx.body
+      { session: session.session, db: kysely },
+      await req.json()
     );
 
-    if (error) return status(error[1] ?? 400, jsonError(ctx, error));
-    return result;
-  },
-  {
-    auth: true  // Requires authentication
+    if (error) {
+      const lang = resolveLang(req.headers);
+      return Response.json({ error: tExternal(lang, error) }, { status: 400 });
+    }
+
+    return Response.json(result);
   }
-);
+};
 ```
 
 ### Error Response Standards
@@ -389,10 +412,9 @@ All error responses follow this format:
 
 ```typescript
 // HTTP 400, 401, 403, 404, 500, etc.
-[null, {
-  code: "ERROR.CODE.HERE",
-  message: "User-facing error message"
-}]
+{
+  error: "User-facing error message"
+}
 ```
 
 **Example Responses:**
@@ -406,16 +428,19 @@ All error responses follow this format:
 }
 
 // Error (400)
-[null, {
-  "code": "CONTROLLER.DATASTORE.CREATE.UNIQUE_NAME",
-  "message": "Datastore my-datastore already exists"
-}]
+{
+  "error": "Datastore my-datastore already exists"
+}
+
+// Error (401)
+{
+  "error": "Unauthorized"
+}
 
 // Error (500)
-[null, {
-  "code": "CONTROLLER.DATASTORE.CREATE.FAILED",
-  "message": "Failed to create datastore"
-}]
+{
+  "error": "Failed to create datastore"
+}
 ```
 
 ### Architecture Flow
@@ -423,17 +448,19 @@ All error responses follow this format:
 ```
 HTTP Request
     ↓
-ElysiaJS Router
+Bun HTTP Server Router
     ↓
-Middleware (mwAuthGuard) → Injects user/session DTOs
+Resolve Session (resolveSession) → Injects user/session DTOs
     ↓
-Validation (t.Object) → Validates request
+Parse Request Body (req.json())
     ↓
-API Handler → Extracts ctx.user, ctx.session, ctx.body
+Validation (Zod safeParse) → Validates request
+    ↓
+API Handler → Extracts params, body, query
     ↓
 Controller Call → Framework-agnostic, DTOs only
     ↓
-Error Handling → jsonError + status code
+Error Handling → tExternal + status code
     ↓
 Response → DTO or error JSON
 ```
@@ -446,22 +473,23 @@ Response → DTO or error JSON
    - Only HTTP concerns: validation, auth, error formatting
 
 2. **Always Validate:**
-   - Use `t.Object()` for all inputs (body, params, query)
-   - Let Elysia handle validation errors automatically
+   - Define schemas in `api-types.ts` using Zod
+   - Use `safeParse()` for all inputs (body, params, query)
+   - Return 400 with error message on validation failure
    - Never trust client input
 
 3. **Consistent Error Handling:**
-   - Always use `jsonError(ctx, error)`
-   - Always set status code: `status(error[1] ?? defaultCode, ...)`
-   - Always set `accept: application/json` header
+   - Always use `tExternal(lang, error)` for error messages
+   - Always set appropriate status code
+   - Return `{ error: string }` format for errors
 
-4. **Document Everything:**
-   - Add `detail` with `summary`, `description`, and `tags`
-   - Use descriptive route names
-   - Group related routes with tags
+4. **Centralized Validation:**
+   - All validation schemas in `api-types.ts`
+   - Reference schemas from handlers: `apiTypes[endpoint].METHOD.body`
+   - Single source of truth for validation logic
 
 5. **DTOs at the Boundary:**
-   - `ctx.user` and `ctx.session` are DTOs from middleware
+   - `session.user` and `session.session` are DTOs from resolveSession
    - Controllers receive DTOs
    - Controllers return DTOs
    - Never leak framework types to controllers
@@ -471,36 +499,84 @@ Response → DTO or error JSON
    - Makes breaking changes easier to manage
    - Allows multiple API versions to coexist
 
-### Testing API Routes
+7. **Use Bun's Native Types:**
+   - Import from `'bun'`: `BunRequest`, `Serve`, `Server`, `Response`
+   - Don't mix with other HTTP libraries
+   - Leverage Bun's performance optimizations
 
-API routes can be tested by mocking controllers:
+### Frontend Integration
+
+Create typed API client functions in `public/api-calls.ts`:
 
 ```typescript
-import { describe, it, expect, mock } from 'bun:test';
-import { apiDatastore } from './api.datastore';
+import { apiTypes } from '@server/api/api-types';
+import { z } from 'zod';
 
-describe('POST /api/v1/datastore', () => {
-  it('should create datastore', async () => {
-    // Mock controller
-    const mockController = mock(() => Promise.resolve([
-      { id: '123', internalName: 'test' },
-      null
-    ]));
+type InferZodType<T> = T extends z.ZodType<infer U> ? U : never;
 
-    // Test request
-    const res = await apiDatastore.handle(
-      new Request('http://localhost/api/v1/datastore', {
-        method: 'POST',
+type ApiResponse<T> = {
+  data: T;
+  error: null;
+} | {
+  data: null;
+  error: string;
+};
+
+async function apiFetch<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
+  try {
+    const response = await fetch(url, options);
+    const data = await response.json();
+
+    if (!response.ok) {
+      return { data: null, error: data.error || `HTTP ${response.status}` };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: error instanceof Error ? error.message : 'Unknown error' };
+  }
+}
+
+const apis = {
+  '/api/v1/datastore/:id': {
+    PATCH: async (
+      params: { id: string },
+      body: InferZodType<typeof apiTypes['/api/v1/datastore/:id']['PATCH']['body']>
+    ) => {
+      const validated = apiTypes['/api/v1/datastore/:id'].PATCH.body.safeParse(body);
+      if (!validated.success) {
+        return { data: null, error: validated.error.message } as const;
+      }
+
+      return apiFetch<{ success: boolean }>(`/api/v1/datastore/${params.id}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ internalName: 'test', provider: 'sqlite' })
-      })
-    );
+        credentials: 'include',
+        body: JSON.stringify(validated.data)
+      });
+    }
+  }
+};
 
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.id).toBe('123');
-  });
-});
+export default apis;
+```
+
+**Usage in Frontend:**
+
+```typescript
+import apis from '@public/api-calls';
+
+// Rename datastore
+const { data, error } = await apis['/api/v1/datastore/:id'].PATCH(
+  { id: 'ds123' },
+  { internalName: 'new-name' }
+);
+
+if (error) {
+  console.error(error);
+} else {
+  console.log('Success:', data);
+}
 ```
 
 ### Common Patterns
@@ -508,71 +584,83 @@ describe('POST /api/v1/datastore', () => {
 #### GET with Pagination
 
 ```typescript
-.get('/list', async (ctx) => {
+GET: async (req, server) => {
+  const session = await resolveSession(req.headers);
+  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const query = new URLSearchParams(req.url.split('?')[1]);
+  const limit = query.get('limit') ? Math.min(Number(query.get('limit')), 100) : 20;
+  const offset = query.get('offset') ? Number(query.get('offset')) : 0;
+
   const [result, error] = await listDatastoresController(
-    { user: ctx.user, session: ctx.session, db: kysely },
-    { limit: ctx.query.limit, offset: ctx.query.offset }
+    { session: session.session, db: kysely },
+    { limit, offset }
   );
 
-  if (error) return status(error[1] ?? 400, jsonError(ctx, error));
-  return result;
-}, {
-  auth: true,
-  query: t.Object({
-    limit: t.Optional(t.Number({ minimum: 1, maximum: 100, default: 20 })),
-    offset: t.Optional(t.Number({ minimum: 0, default: 0 }))
-  })
-});
+  if (error) {
+    const lang = resolveLang(req.headers);
+    return Response.json({ error: tExternal(lang, error) }, { status: 400 });
+  }
+
+  return Response.json(result);
+}
 ```
 
 #### DELETE by ID
 
 ```typescript
-.delete('/:id', async (ctx) => {
+DELETE: async (req, server) => {
+  const session = await resolveSession(req.headers);
+  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
   const [result, error] = await deleteDatastoreController(
-    { user: ctx.user, session: ctx.session, db: kysely },
-    { id: ctx.params.id }
+    { session: session.session, db: kysely },
+    { id: req.params.id }
   );
 
-  if (error) return status(error[1] ?? 404, jsonError(ctx, error));
-  return { deleted: true };
-}, {
-  auth: true,
-  params: t.Object({
-    id: t.String()
-  })
-});
+  if (error) {
+    const lang = resolveLang(req.headers);
+    return Response.json({ error: tExternal(lang, error) }, { status: 404 });
+  }
+
+  return Response.json({ deleted: true });
+}
 ```
 
 #### PATCH (Partial Update)
 
 ```typescript
-.patch('/:id', async (ctx) => {
+PATCH: async (req, server) => {
+  const session = await resolveSession(req.headers);
+  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const body = await req.json();
+  const validatedBody = apiTypes['/api/v1/datastore/:id'].PATCH.body.safeParse(body);
+
+  if (!validatedBody.success) {
+    return Response.json({ error: validatedBody.error.message }, { status: 400 });
+  }
+
   const [result, error] = await updateDatastoreController(
-    { user: ctx.user, session: ctx.session, db: kysely },
-    { id: ctx.params.id, ...ctx.body }
+    { session: session.session, db: kysely },
+    { id: req.params.id, ...validatedBody.data }
   );
 
-  if (error) return status(error[1] ?? 404, jsonError(ctx, error));
-  return result;
-}, {
-  auth: true,
-  params: t.Object({
-    id: t.String()
-  }),
-  body: t.Object({
-    internalName: t.Optional(t.String({ minLength: 1, maxLength: 255 })),
-    status: t.Optional(t.Union([t.Literal('active'), t.Literal('archived')]))
-  })
-});
+  if (error) {
+    const lang = resolveLang(req.headers);
+    return Response.json({ error: tExternal(lang, error) }, { status: 404 });
+  }
+
+  return Response.json(result);
+}
 ```
 
 ### Summary
 
 The API layer is your HTTP boundary:
-- **ElysiaJS types stay here** (never leak to controllers)
-- **Validate all inputs** with `t.Object()`
+- **Bun native types only** (never leak to controllers)
+- **Validate all inputs** with Zod schemas in `api-types.ts`
 - **Call controllers** with DTOs
-- **Handle errors** consistently with `jsonError()`
-- **Document with OpenAPI** using `detail`
+- **Handle errors** consistently with `tExternal()`
 - **Keep it thin** - no business logic
+- **Frontend integration** via typed `api-calls.ts` that reuses Zod schemas

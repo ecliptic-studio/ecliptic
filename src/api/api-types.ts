@@ -50,6 +50,14 @@ export const apiTypes = {
       ]),
     }
   },
+  '/api/v1/datastore': {
+    POST: {
+      body: z.object({
+        internalName: z.string().min(1).max(255),
+        provider: z.enum(['sqlite']),
+      }),
+    }
+  },
   '/api/v1/datastore/:id': {
     params: {
       id: z.string().min(1)
