@@ -5,7 +5,7 @@ import { tExternal } from '@server/error/t-error';
 import { resolveSession } from '@server/mw/mw.auth-guard';
 import { resolveLang } from '@server/mw/mw.lang';
 import type { BunRequest, Serve, Server } from 'bun';
-import z from 'zod';
+import { apiTypes } from './api-types';
 
 export const apiMcpId: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/mcp-keys/:id'>, Server<undefined>, Response>>> = {
 	DELETE: async (req, server) => {
@@ -30,10 +30,7 @@ export const apiMcpId: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest
 		const lang = resolveLang(req.headers);
 
 		const body = await req.json();
-		const validatedBody = z.object({
-			name: z.string().min(1).optional(),
-			permissions: z.array(z.object({ actionId: z.string(), targetId: z.string() }))
-		}).safeParse(body);
+		const validatedBody = apiTypes['/api/v1/mcp-keys/:id'].PATCH.body.safeParse(body);
 
 		if (!validatedBody.success) return Response.json({ error: validatedBody.error.message }, { status: 400 });
 

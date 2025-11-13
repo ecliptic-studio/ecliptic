@@ -42,10 +42,6 @@ export const app = new Elysia()
 
 export type App = typeof app
 
-console.log(
-	`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`
-)
-
 const server = Bun.serve({
   routes: {
 		// api routes

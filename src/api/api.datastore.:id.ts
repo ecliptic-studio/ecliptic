@@ -6,7 +6,7 @@ import { tExternal } from '@server/error/t-error';
 import { resolveSession } from '@server/mw/mw.auth-guard';
 import { resolveLang } from '@server/mw/mw.lang';
 import type { BunRequest, Serve, Server } from 'bun';
-import { z } from 'zod';
+import { apiTypes } from './api-types';
 
 export const apiDatastoreId: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/datastore/:id'>, Server<undefined>, Response>>> = {
   PATCH: async (req, server) => {
@@ -15,9 +15,7 @@ export const apiDatastoreId: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunR
     if (!session) return Response.json({error: 'Unauthorized'}, {status: 401})
 
     const body = await req.json();
-    const validatedBody = z.object({
-      internalName: z.string().min(1).max(255),
-    }).safeParse(body);
+    const validatedBody = apiTypes['/api/v1/datastore/:id'].PATCH.body.safeParse(body);
 
     if (!validatedBody.success) return Response.json({error: validatedBody.error.message}, {status: 400})
 

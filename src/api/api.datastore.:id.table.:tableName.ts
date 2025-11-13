@@ -5,7 +5,6 @@ import { updateTableRowsController } from '@server/controllers/ctrl.datastore.ro
 import { getTableDataController } from '@server/controllers/ctrl.datastore.table-get';
 import { kysely } from '@server/db';
 import { parseQueryFn } from '@server/subroutines/datastore/query-parser.fn';
-import { z } from 'zod';
 
 
 /**
