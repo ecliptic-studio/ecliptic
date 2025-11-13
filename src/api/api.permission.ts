@@ -1,32 +1,24 @@
 // Controller handles HTTP related eg. routing, request validation
 import { listPermissionMetadataController } from '@server/controllers/ctrl.permission.list-metadata';
 import { kysely } from '@server/db';
-import { mwAuthGuard } from '@server/mw/mw.auth-guard';
-import { jsonError } from '@server/server-helper';
-import { Elysia, status } from 'elysia';
+import { tExternal } from '@server/error/t-error';
+import { resolveSession } from '@server/mw/mw.auth-guard';
+import { type BunRequest, type Serve, type Server } from "bun";
 
-export const apiPermission = new Elysia({ prefix: '/api/v1/permission', name: 'apiPermission' })
-	.use(mwAuthGuard)
-	.get(
-		'/targets-and-actions',
-		async (ctx) => {
-			
-			const [result, error] = await listPermissionMetadataController({
-				session: ctx.session,
-				db: kysely
-			})
+export const apiPermission: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/permission/targets-and-actions'>, Server<undefined>, Response>>> = {
+	GET: async (req, server) => {
+		const session = await resolveSession(req.headers);
+		if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-			if (error) {
-				return status(error.statusCode, jsonError(ctx, error))
-			}
+		const [result, error] = await listPermissionMetadataController({
+			session: session.session,
+			db: kysely
+		});
 
-			return result
-		}, {
-			auth: true,
-			detail: {
-				summary: 'Get all permission targets and actions',
-				description: 'Retrieve all permissions for the authenticated user\'s active organization',
-				tags: ['Permission']
-			}
+		if (error) {
+			return Response.json({ error: tExternal('en', error) }, { status: error.statusCode || 400 });
 		}
-	)
+
+		return Response.json(result);
+	}
+};

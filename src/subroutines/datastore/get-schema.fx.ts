@@ -140,7 +140,7 @@ export function datastoreGetSchemaFx(
           en: 'Failed to retrieve database schema',
           de: 'Datenbankschema konnte nicht abgerufen werden'
         })
-        .statusCode('Internal Server Error')
+        .statusCode(500)
         .shouldLog(true)
         .buildEntry(),
     ];

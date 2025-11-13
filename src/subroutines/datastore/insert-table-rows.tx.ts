@@ -42,7 +42,7 @@ export function insertTableRowsTx(
         en: 'No rows to insert',
         de: 'Keine Zeilen zum Einfügen',
       })
-      .statusCode('Bad Request')
+      .statusCode(400)
       .shouldLog(false)
       .buildEntry();
     return [null, err, rollbacks];
@@ -58,7 +58,7 @@ export function insertTableRowsTx(
           en: 'No rows to insert',
           de: 'Keine Zeilen zum Einfügen',
         })
-        .statusCode('Bad Request')
+        .statusCode(400)
         .shouldLog(false)
         .buildEntry();
       return [null, err, rollbacks];
@@ -72,7 +72,7 @@ export function insertTableRowsTx(
           en: 'Invalid row data: no columns provided',
           de: 'Ungültige Zeilendaten: keine Spalten angegeben',
         })
-        .statusCode('Bad Request')
+        .statusCode(400)
         .shouldLog(false)
         .buildEntry();
       return [null, err, rollbacks];
@@ -131,7 +131,7 @@ export function insertTableRowsTx(
         en: 'Failed to insert rows',
         de: 'Fehler beim Einfügen der Zeilen',
       })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry();
     return [null, err, rollbacks];

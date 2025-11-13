@@ -28,7 +28,7 @@ export async function deleteMcpKeyController(
         createError(ErrorCode.CONTROLLER_MCP_KEY_DELETE_NOT_FOUND)
           .internal(`MCP key ${args.id} not found`)
           .external({ en: 'MCP key not found', de: 'MCP-Schlüssel nicht gefunden' })
-          .statusCode('Not Found')
+          .statusCode(404)
           .buildEntry()
       ];
     }
@@ -47,7 +47,7 @@ export async function deleteMcpKeyController(
       .internal(msg)
       .external({ en: 'Failed to delete MCP key', de: 'Fehler beim Löschen des MCP-Schlüssels' })
       .shouldLog(true)
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .buildEntry();
     return [null, err];
   }

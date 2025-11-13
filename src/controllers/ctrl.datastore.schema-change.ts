@@ -40,7 +40,7 @@ export async function schemaChangeDatastoreController(
     const err = createError(ErrorCode.CONTROLLER_DATASTORE_SCHEMA_CHANGE_NOT_FOUND)
     .internal(`Datastore ${args.id} not found`)
     .external({ en: `Datastore ${args.id} not found`, de: `Datastore ${args.id} nicht gefunden` })
-    .statusCode('Not Found')
+    .statusCode(404)
     .buildEntry()
     return [null, err]
   }
@@ -161,7 +161,7 @@ export async function schemaChangeDatastoreController(
     const err = createError(ErrorCode.CONTROLLER_DATASTORE_SCHEMA_CHANGE_FAILED)
       .internal(msg)
       .external({ en: 'Failed to change datastore schema', de: 'Fehler beim Ändern des Datastoreschemas' })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry()
     return [null, err]

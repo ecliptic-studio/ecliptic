@@ -40,7 +40,7 @@ export async function listPermissionMetadataController(
       .internal(msg)
       .external({ en: 'Failed to list MCP keys', de: 'Fehler beim Auflisten der MCP-Schlüssel' })
       .shouldLog(true)
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .buildEntry();
     return [null, err];
   }

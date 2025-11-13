@@ -36,7 +36,7 @@ export async function updateMcpKeyController(
         createError(ErrorCode.CONTROLLER_MCP_KEY_UPDATE_NOT_FOUND)
           .internal(`MCP key ${args.id} not found`)
           .external({ en: 'MCP key not found', de: 'MCP-Schlüssel nicht gefunden' })
-          .statusCode('Not Found')
+          .statusCode(404)
           .buildEntry()
       ];
     }
@@ -90,7 +90,7 @@ export async function updateMcpKeyController(
           .internal('MCP key not found after update')
           .external({ en: 'Failed to update MCP key', de: 'Fehler beim Aktualisieren des MCP-Schlüssels' })
           .shouldLog(true)
-          .statusCode('Internal Server Error')
+          .statusCode(500)
           .buildEntry()
       ];
     }
@@ -102,7 +102,7 @@ export async function updateMcpKeyController(
       .internal(msg)
       .external({ en: 'Failed to update MCP key', de: 'Fehler beim Aktualisieren des MCP-Schlüssels' })
       .shouldLog(true)
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .buildEntry();
     return [null, err];
   }

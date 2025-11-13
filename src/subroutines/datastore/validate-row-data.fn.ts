@@ -47,7 +47,7 @@ export function validateRowDataFn(
         en: `Table '${tableName}' does not exist`,
         de: `Tabelle '${tableName}' existiert nicht`,
       })
-      .statusCode('Not Found')
+      .statusCode(404)
       .shouldLog(false)
       .buildEntry();
     return [null, err, []];
@@ -97,7 +97,7 @@ export function validateRowDataFn(
         en: errors.join('. '),
         de: errors.join('. '),
       })
-      .statusCode('Bad Request')
+      .statusCode(400)
       .shouldLog(false)
       .buildEntry();
     return [null, err, []];
