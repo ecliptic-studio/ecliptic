@@ -2,9 +2,9 @@
 import { createMcpKeyController } from '@server/controllers/ctrl.mcp.create-key';
 import { listMcpKeysController } from '@server/controllers/ctrl.mcp.list';
 import { kysely } from '@server/db';
-import { tExternal } from '@server/error/t-error';
 import { resolveSession } from '@server/mw/mw.auth-guard';
 import { resolveLang } from '@server/mw/mw.lang';
+import { toErrorResponse } from '@server/server-helper';
 import type { BunRequest, Serve, Server } from 'bun';
 import { apiTypes } from './api-types';
 
@@ -20,7 +20,7 @@ export const apiMcpKeys: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunReque
 		});
 
 		if (error) {
-			return Response.json({ error: tExternal(lang, error) }, { status: error.statusCode || 400 });
+			return toErrorResponse({req, user: session.user, session: session.session, lang, error})
 		}
 
 		return Response.json(result);
@@ -41,7 +41,7 @@ export const apiMcpKeys: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunReque
 			db: kysely
 		}, validatedBody.data);
 
-		if (error) return Response.json({ error: tExternal(lang, error) }, { status: error.statusCode || 400 });
+		if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error})
 
 		return Response.json(result);
 	},

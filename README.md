@@ -121,7 +121,7 @@ All through MCP tool calls, fully auditable and reversible.
 ## Technology Stack
 
 - **Runtime**: Bun (JavaScript/TypeScript)
-- **Backend Framework**: Elysia (fast, type-safe, OpenAPI-first)
+- **Backend Framework**: Bun Router
 - **Frontend**: React 19 + Base UI + Tailwind CSS v4
 - **Database**: SQLite + Kysely (type-safe query builder)
 - **Auth**: better-auth

@@ -1,9 +1,9 @@
 // Controller handles HTTP related eg. routing, request validation
 import { schemaChangeDatastoreController } from '@server/controllers/ctrl.datastore.schema-change';
 import { kysely } from '@server/db';
-import { tExternal } from '@server/error/t-error';
 import { resolveSession } from '@server/mw/mw.auth-guard';
 import { resolveLang } from '@server/mw/mw.lang';
+import { toErrorResponse } from '@server/server-helper';
 import type { BunRequest, Serve, Server } from 'bun';
 import { apiTypes } from './api-types';
 
@@ -23,7 +23,7 @@ export const apiDatastoreIdSchema: Partial<Record<Serve.HTTPMethod, Serve.Handle
       { id: req.params.id, change: validatedBody.data }
     );
 
-    if (error) return Response.json({ error: tExternal(lang, error) }, { status: 400 })
+    if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error})
 
     return Response.json(result, { status: 201 })
   }

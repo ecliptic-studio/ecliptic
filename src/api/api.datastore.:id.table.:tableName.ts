@@ -28,8 +28,8 @@ function buildContentRangeHeader(start: number | null, end: number, total?: numb
 }
 
 // Controller handles HTTP related eg. routing, request validation
-import { tExternal } from '@server/error/t-error';
 import { resolveLang } from '@server/mw/mw.lang';
+import { toErrorResponse } from '@server/server-helper';
 import { type BunRequest, type Serve, type Server } from "bun";
 import { resolveSession } from '../mw/mw.auth-guard';
 
@@ -77,7 +77,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
       }
     );
 
-    if (error) return Response.json({ error: tExternal(lang, error) }, { status: 400 })
+    if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error })
 
     const response = new Response(JSON.stringify(result), {
       headers: {
@@ -106,7 +106,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
       }
     );
 
-    if (error) return Response.json({ error: tExternal(lang, error) }, { status: 400 })
+    if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error })
 
     const response = new Response(JSON.stringify(result), {
       headers: {
@@ -152,7 +152,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
       }
     );
 
-    if (error) return Response.json({ error: tExternal(lang, error) }, { status: 400 })
+    if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error })
 
     const count = result.updated;
     const contentRange = count > 0
@@ -189,7 +189,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
       }
     );
 
-    if (error) return Response.json({ error: tExternal(lang, error) }, { status: 400 })
+    if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error })
 
     const count = result.deleted;
     const contentRange = count > 0
