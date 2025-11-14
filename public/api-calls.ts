@@ -1,6 +1,12 @@
-import { apiTypes } from '@server/api/api-types';
-import { z } from 'zod';
 import { type TDatastore } from "@dto/TDatastore";
+import { apiTypes } from '@server/api/api-types';
+import type { TDataResponse } from '@server/controllers/ctrl.data.get';
+import type { TMcpKey } from "@server/dto/TMcp";
+import type { TPermissionMeta } from "@server/dto/TPermissionMeta";
+import type { TTableData } from '@server/dto/TTableData';
+import type { TTableInsertResult } from '@server/dto/TTableInsertResult';
+import type { TTableUpdateResult } from '@server/dto/TTableUpdateResult';
+import { z } from 'zod';
 
 // Base URL for API calls - can be configured via environment
 const API_BASE = '';
@@ -37,13 +43,7 @@ const apis = {
      */
     GET: async () => {
       return apiFetch<{
-        datastores: Array<{
-          id: string;
-          internalName: string;
-          organizationId: string;
-          userId: string;
-          createdAt: string;
-        }>;
+        datastores: TDataResponse;
       }>(`${API_BASE}/api/v1/data`, {
         method: 'GET',
         credentials: 'include',
@@ -81,7 +81,7 @@ const apis = {
       if (!validated.success)
         return [null, validated.error.message];
 
-      return apiFetch<{ success: boolean }>(`${API_BASE}/api/v1/datastore/${params.id}`, {
+      return apiFetch<TDatastore>(`${API_BASE}/api/v1/datastore/${params.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -93,7 +93,7 @@ const apis = {
      * Delete a datastore
      */
     DELETE: async (params: { id: string }) => {
-      return apiFetch<{ success: boolean }>(`${API_BASE}/api/v1/datastore/${params.id}`, {
+      return apiFetch<{ deleted: boolean }>(`${API_BASE}/api/v1/datastore/${params.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -113,7 +113,7 @@ const apis = {
       if (!validated.success)
         return [null, validated.error.message];
 
-      return apiFetch<{ success: boolean }>(`${API_BASE}/api/v1/datastore/${params.id}/schema`, {
+      return apiFetch<TDatastore>(`${API_BASE}/api/v1/datastore/${params.id}/schema`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -153,31 +153,11 @@ const apis = {
       const queryString = searchParams.toString();
       const url = `${API_BASE}/api/v1/datastore/${params.id}/table/${params.tableName}${queryString ? `?${queryString}` : ''}`;
 
-      const response = await fetch(url, {
+      return apiFetch<TTableData>(url, {
         method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return [null, data.error || `HTTP ${response.status}: ${response.statusText}`];
-      }
-
-      return {
-        data: data as {
-          data: Array<Record<string, any>>;
-          columns: Array<{
-            name: string;
-            type: string;
-            nullable: boolean;
-            default: any;
-            primaryKey: boolean;
-          }>;
-        },
-        error: null,
-        contentRange: response.headers.get('Content-Range')
-      } as const;
     },
 
     /**
@@ -187,28 +167,16 @@ const apis = {
       params: { id: string; tableName: string },
       body: Record<string, any> | Array<Record<string, any>>
     ) => {
-      const response = await fetch(`${API_BASE}/api/v1/datastore/${params.id}/table/${params.tableName}`, {
+
+
+      const url = `${API_BASE}/api/v1/datastore/${params.id}/table/${params.tableName}`
+
+      return apiFetch<TTableInsertResult>(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(body)
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          data: null,
-          error: data.error || `HTTP ${response.status}: ${response.statusText}`,
-          contentRange: null
-        } as const;
-      }
-
-      return {
-        data: data as { inserted: number },
-        error: null,
-        contentRange: response.headers.get('Content-Range')
-      } as const;
     },
 
     /**
@@ -236,28 +204,12 @@ const apis = {
       const queryString = searchParams.toString();
       const url = `${API_BASE}/api/v1/datastore/${params.id}/table/${params.tableName}${queryString ? `?${queryString}` : ''}`;
 
-      const response = await fetch(url, {
+      return apiFetch<TTableUpdateResult>(url, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(body)
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          data: null,
-          error: data.error || `HTTP ${response.status}: ${response.statusText}`,
-          contentRange: null
-        } as const;
-      }
-
-      return {
-        data: data as { updated: number },
-        error: null,
-        contentRange: response.headers.get('Content-Range')
-      } as const;
     },
 
     /**
@@ -275,28 +227,15 @@ const apis = {
         } as const;
       }
 
-      const response = await fetch(`${API_BASE}/api/v1/datastore/${params.id}/table/${params.tableName}`, {
+
+      const url = `${API_BASE}/api/v1/datastore/${params.id}/table/${params.tableName}`
+
+      return apiFetch<{deleted: number}>(url, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(body)
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return {
-          data: null,
-          error: data.error || `HTTP ${response.status}: ${response.statusText}`,
-          contentRange: null
-        } as const;
-      }
-
-      return {
-        data: data as { deleted: number },
-        error: null,
-        contentRange: response.headers.get('Content-Range')
-      } as const;
     }
   },
 
@@ -306,15 +245,7 @@ const apis = {
      */
     GET: async () => {
       return apiFetch<{
-        keys: Array<{
-          id: string;
-          name: string;
-          key: string;
-          organizationId: string;
-          userId: string;
-          createdAt: string;
-          permissions: Array<{ actionId: string; targetId: string }>;
-        }>;
+        keys: TMcpKey[];
       }>(`${API_BASE}/api/v1/mcp-keys`, {
         method: 'GET',
         credentials: 'include',
@@ -328,23 +259,10 @@ const apis = {
       // Validate body with Zod
       const validated = apiTypes['/api/v1/mcp-keys'].POST.body.safeParse(body);
       if (!validated.success) {
-        return {
-          data: null,
-          error: validated.error.message
-        } as const;
+        return [null, validated.error.message] as ApiResponse<TMcpKey>;
       }
 
-      return apiFetch<{
-        key: {
-          id: string;
-          name: string;
-          key: string;
-          organizationId: string;
-          userId: string;
-          createdAt: string;
-          permissions: Array<{ actionId: string; targetId: string }>;
-        };
-      }>(`${API_BASE}/api/v1/mcp-keys`, {
+      return apiFetch<TMcpKey>(`${API_BASE}/api/v1/mcp-keys`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -364,23 +282,10 @@ const apis = {
       // Validate body with Zod
       const validated = apiTypes['/api/v1/mcp-keys/:id'].PATCH.body.safeParse(body);
       if (!validated.success) {
-        return {
-          data: null,
-          error: validated.error.message
-        } as const;
+        return [null, validated.error.message] as ApiResponse<TMcpKey>;
       }
 
-      return apiFetch<{
-        key: {
-          id: string;
-          name: string;
-          key: string;
-          organizationId: string;
-          userId: string;
-          createdAt: string;
-          permissions: Array<{ actionId: string; targetId: string }>;
-        };
-      }>(`${API_BASE}/api/v1/mcp-keys/${params.id}`, {
+      return apiFetch<TMcpKey>(`${API_BASE}/api/v1/mcp-keys/${params.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -392,7 +297,7 @@ const apis = {
      * Delete an MCP key
      */
     DELETE: async (params: { id: string }) => {
-      return apiFetch<{ success: boolean }>(`${API_BASE}/api/v1/mcp-keys/${params.id}`, {
+      return apiFetch<{ deleted: true }>(`${API_BASE}/api/v1/mcp-keys/${params.id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -404,10 +309,7 @@ const apis = {
      * Get permission metadata (available targets and actions)
      */
     GET: async () => {
-      return apiFetch<{
-        targets: Array<{ id: string; name: string; description: string }>;
-        actions: Array<{ id: string; name: string; description: string }>;
-      }>(`${API_BASE}/api/v1/permission/targets-and-actions`, {
+      return apiFetch<TPermissionMeta>(`${API_BASE}/api/v1/permission/targets-and-actions`, {
         method: 'GET',
         credentials: 'include',
       });
