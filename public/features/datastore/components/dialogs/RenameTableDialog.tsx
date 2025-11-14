@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
+import apis from "@public/api-calls";
 import { ActionDialog } from "@public/components/ActionDialog";
 import { Input } from "@public/components/ui/input";
 import { Label } from "@public/components/ui/label";
-import { useStore } from "zustand";
-import rpcClient from "@public/rpc-client";
-import { toast } from "sonner";
 import { globalStore, type TGlobalStore } from "@public/store/store.global";
-import type { RenameTableMetadata } from "../../types";
 import { produce } from "immer";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { useStore } from "zustand";
+import type { RenameTableMetadata } from "../../types";
 
 interface RenameTableDialogProps {
   open: boolean;
@@ -40,15 +40,15 @@ export function RenameTableDialog({
     if (currentName.trim() && newName.trim() && metadata && !isLoading) {
       setIsLoading(true);
       try {
-        const { data, error } = await rpcClient.api.v1.datastore({ id: metadata.datastoreId }).schema.patch({
+        const [data, error] = await apis["/api/v1/datastore/:id/schema"].PATCH({id: metadata.datastoreId}, {
           type: "rename-table",
           table: currentName.trim(),
           new_name: newName.trim(),
-        });
+        })
 
-        if (error) {
+        if (error !== null) {
           toast.error("Failed to rename table", {
-            description: error.value?.message || "An error occurred while renaming the table",
+            description: error
           });
           return;
         }

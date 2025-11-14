@@ -42,9 +42,7 @@ const apis = {
      * Get all datastores for the current user
      */
     GET: async () => {
-      return apiFetch<{
-        datastores: TDataResponse;
-      }>(`${API_BASE}/api/v1/data`, {
+      return apiFetch<TDataResponse>(`${API_BASE}/api/v1/data`, {
         method: 'GET',
         credentials: 'include',
       });
@@ -79,7 +77,7 @@ const apis = {
       // Validate body with Zod
       const validated = apiTypes['/api/v1/datastore/:id'].PATCH.body.safeParse(body);
       if (!validated.success)
-        return [null, validated.error.message];
+        return [null, validated.error.message] as [null, string];
 
       return apiFetch<TDatastore>(`${API_BASE}/api/v1/datastore/${params.id}`, {
         method: 'PATCH',
@@ -111,7 +109,7 @@ const apis = {
       // Validate body with Zod
       const validated = apiTypes['/api/v1/datastore/:id/schema'].PATCH.body.safeParse(body);
       if (!validated.success)
-        return [null, validated.error.message];
+        return [null, validated.error.message] as [null, string];
 
       return apiFetch<TDatastore>(`${API_BASE}/api/v1/datastore/${params.id}/schema`, {
         method: 'PATCH',
@@ -219,13 +217,8 @@ const apis = {
       params: { id: string; tableName: string },
       body: { rowids: Array<number | string> }
     ) => {
-      if (!body.rowids || !Array.isArray(body.rowids) || body.rowids.length === 0) {
-        return {
-          data: null,
-          error: 'rowids array is required and must contain at least one ROWID',
-          contentRange: null
-        } as const;
-      }
+      if (!body.rowids || !Array.isArray(body.rowids) || body.rowids.length === 0)
+        return [null, 'rowids array is required and must contain at least one ROWID'] as const
 
 
       const url = `${API_BASE}/api/v1/datastore/${params.id}/table/${params.tableName}`
@@ -244,9 +237,7 @@ const apis = {
      * List all MCP keys for the current user
      */
     GET: async () => {
-      return apiFetch<{
-        keys: TMcpKey[];
-      }>(`${API_BASE}/api/v1/mcp-keys`, {
+      return apiFetch<TMcpKey[]>(`${API_BASE}/api/v1/mcp-keys`, {
         method: 'GET',
         credentials: 'include',
       });

@@ -1,7 +1,7 @@
 import { ActionDialog } from "@public/components/ActionDialog";
 import { Input } from "@public/components/ui/input";
 import { Label } from "@public/components/ui/label";
-import rpcClient from "@public/rpc-client";
+import apis from "@public/api-calls";
 import { globalStore, type TGlobalStore } from "@public/store/store.global";
 import { produce } from "immer";
 import { useEffect, useState } from "react";
@@ -37,13 +37,13 @@ export function RenameDatastoreDialog({
     if (currentName.trim() && newName.trim() && metadata && !isLoading) {
       setIsLoading(true);
       try {
-        const { data, error } = await rpcClient.api.v1.datastore({ id: metadata.datastoreId }).patch({
-          internalName: newName.trim(),
-        });
+        const [data, error] = await apis["/api/v1/datastore/:id"].PATCH({id: metadata.datastoreId}, {
+          internalName: newName.trim()
+        })
 
-        if (error) {
+        if (error !== null) {
           toast.error("Failed to rename datastore", {
-            description: error.value?.message || "An error occurred while renaming the datastore",
+            description: error
           });
           return;
         }
