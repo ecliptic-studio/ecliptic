@@ -1,7 +1,7 @@
+import apis from "@public/api-calls";
 import { Button } from "@public/components/ui/button";
 import { useHeader } from "@public/contexts/HeaderContext";
 import { EditMcpForm } from "@public/features/mcp/components/edit-mcp-form";
-import rpcClient from "@public/rpc-client";
 import { ArrowLeft } from "lucide-react";
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -17,13 +17,13 @@ export function McpApiKeyEditorPage() {
   // Fetch permission metadata (targets and actions)
   const { data: metadataResponse, error: metadataError, isLoading: isMetadataLoading } = useSWR(
     '/permission-metadata',
-    rpcClient.api.v1.permission["targets-and-actions"].get
+    apis["/api/v1/permission/targets-and-actions"].GET
   );
 
   // Fetch existing MCP key data if in edit mode
   const { data: keysResponse, error: keysError, isLoading: isKeysLoading } = useSWR(
     isEditMode ? '/mcp-keys' : null,
-    rpcClient.api.v1["mcp-keys"].get
+    apis["/api/v1/mcp-keys"].GET
   );
 
   // Set header
@@ -50,26 +50,26 @@ export function McpApiKeyEditorPage() {
   if (isLoading) return <div className="p-6 max-w-6xl mx-auto">Loading...</div>;
 
   // Error handling
-  if (metadataError || metadataResponse?.error) {
+  if (metadataError || metadataResponse?.[1]) {
     return <div className="p-6 max-w-6xl mx-auto text-destructive">
-      Error loading metadata: {metadataError?.message || 'Unknown error'}
+      Error loading metadata: {metadataError?.message || metadataResponse?.[1]}
     </div>;
   }
 
-  if (isEditMode && (keysError || keysResponse?.error)) {
+  if (isEditMode && (keysError || keysResponse?.[1])) {
     return <div className="p-6 max-w-6xl mx-auto text-destructive">
-      Error loading API key: {keysError?.message || 'Unknown error'}
+      Error loading API key: {keysError?.message || keysResponse?.[1]}
     </div>;
   }
 
-  if (!metadataResponse?.data) {
+  if (!metadataResponse?.[0]) {
     return <div className="p-6 max-w-6xl mx-auto">No metadata available</div>;
   }
 
   // Find the specific key if in edit mode
   let existingKey = null;
-  if (isEditMode && keysResponse?.data) {
-    existingKey = keysResponse.data.find((key: any) => key.id === keyId);
+  if (isEditMode && keysResponse?.[0]) {
+    existingKey = keysResponse[0].find((key: any) => key.id === keyId);
     if (!existingKey) {
       return <div className="p-6 max-w-6xl mx-auto text-destructive">
         API key not found
@@ -80,9 +80,9 @@ export function McpApiKeyEditorPage() {
   return (
     <div className="p-6 max-w-6xl mx-auto space-y-6">
       <EditMcpForm
-        actions={metadataResponse.data.actions}
-        targets={metadataResponse.data.targets}
-        allowedActionsByType={metadataResponse.data.allowedActionsByType}
+        actions={metadataResponse[0].actions}
+        targets={metadataResponse[0].targets}
+        allowedActionsByType={metadataResponse[0].allowedActionsByType}
         existingKey={existingKey}
         isEditMode={isEditMode}
       />

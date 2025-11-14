@@ -38,7 +38,7 @@ export async function dropDatastoreController(
         en: `Datastore not found`,
         de: `Datastore nicht gefunden`
       })
-      .statusCode('Not Found')
+      .statusCode(404)
       .buildEntry();
     return [null, err];
   }
@@ -77,7 +77,7 @@ export async function dropDatastoreController(
         en: 'Failed to delete datastore',
         de: 'Fehler beim Löschen des Datastores'
       })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry();
     return [null, err];

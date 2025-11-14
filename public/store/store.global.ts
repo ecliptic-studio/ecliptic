@@ -1,6 +1,7 @@
 import { createStore } from 'zustand';
 import createInitialLoadingAction from './actions/action.inital-loading';
 import type { TDatastore } from '@dto/TDatastore';
+import { betterAuthClient } from "@public/lib/auth-client";
 
 type TError = {
   code: string
@@ -19,9 +20,9 @@ export const globalStore = createStore<TGlobalStore>((set, get) => {
     // Actions
     initialLoading: createInitialLoadingAction(set),
   }
-  
-  // Auto-load data on store creation
-  setTimeout(() => store.initialLoading(), 0)
+
+  // auto-load in AuthGuard.tsx
+
   
   return store
 })

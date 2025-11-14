@@ -34,7 +34,7 @@ export async function renameDatastoreController(
     const err = createError(ErrorCode.CONTROLLER_DATASTORE_UPDATE_NOT_FOUND)
       .internal(`Datastore ${args.id} not found`)
       .external({ en: 'Datastore not found', de: 'Datastore nicht gefunden' })
-      .statusCode('Not Found')
+      .statusCode(404)
       .buildEntry();
     return [null, err];
   }
@@ -56,7 +56,7 @@ export async function renameDatastoreController(
           en: `Datastore ${args.internalName} already exists`,
           de: `Datastore ${args.internalName} existiert bereits`
         })
-        .statusCode('Conflict')
+        .statusCode(409)
         .buildEntry();
       return [null, err];
     }
@@ -79,7 +79,7 @@ export async function renameDatastoreController(
     const err = createError(ErrorCode.CONTROLLER_DATASTORE_UPDATE_FAILED)
       .internal(msg)
       .external({ en: 'Failed to rename datastore', de: 'Fehler beim Umbenennen des Datastores' })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry();
     return [null, err];

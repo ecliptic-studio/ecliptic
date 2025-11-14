@@ -2,10 +2,10 @@ import { Button } from "@components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@components/ui/card";
 import { Skeleton } from "@components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@components/ui/table";
+import apis from "@public/api-calls";
 import { useHeader } from "@public/contexts/HeaderContext";
 import { useMcpDialog } from "@public/features/mcp/hooks/use-mcp-dialog";
 import { getLangFx } from "@public/i18n/get-lang";
-import rpcClient from "@public/rpc-client";
 import { Copy, Edit, Eye, EyeOff, Link, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -68,14 +68,14 @@ export function McpSettingsPage() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await rpcClient.api.v1["mcp-keys"].get();
+        const [data, error] = await apis["/api/v1/mcp-keys"].GET()
 
-        if (response.error) {
-          throw new Error(response.error.value?.message || "Failed to load API keys");
+        if (error) {
+          throw new Error(error);
         }
 
-        if (response.data) {
-          setKeys(response.data);
+        if (data) {
+          setKeys(data);
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to load API keys";

@@ -47,7 +47,7 @@ export async function deleteTableRowsController(
           en: 'Delete operation requires at least one ROWID',
           de: 'Löschvorgang erfordert mindestens eine ROWID',
         })
-        .statusCode('Bad Request')
+        .statusCode(400)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -69,7 +69,7 @@ export async function deleteTableRowsController(
           en: 'Datastore not found',
           de: 'Datastore nicht gefunden',
         })
-        .statusCode('Not Found')
+        .statusCode(404)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -86,7 +86,7 @@ export async function deleteTableRowsController(
           en: `Table '${args.tableName}' not found`,
           de: `Tabelle '${args.tableName}' nicht gefunden`,
         })
-        .statusCode('Not Found')
+        .statusCode(404)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -107,7 +107,7 @@ export async function deleteTableRowsController(
           en: 'Failed to access datastore',
           de: 'Fehler beim Zugriff auf Datastore',
         })
-        .statusCode('Internal Server Error')
+        .statusCode(500)
         .shouldLog(true)
         .buildEntry()
       ];
@@ -132,7 +132,7 @@ export async function deleteTableRowsController(
           en: 'Failed to delete rows',
           de: 'Fehler beim Löschen der Zeilen',
         })
-        .statusCode(deleteError.statusCode || 'Internal Server Error')
+        .statusCode(deleteError.statusCode || 500)
         .shouldLog(true)
         .buildEntry();
       return [null, err];
@@ -154,7 +154,7 @@ export async function deleteTableRowsController(
         en: 'Failed to delete rows',
         de: 'Fehler beim Löschen der Zeilen',
       })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry();
     return [null, err];

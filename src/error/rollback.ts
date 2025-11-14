@@ -11,7 +11,7 @@ export async function executeRollbacks(rollbacks: TExternalRollback[]): Promise<
     const [rollbackRes, rollbackResError, rollbackResRollbacks] = await rollback().catch(e => {
       return [null, {
         code: 'ROLLBACK_EXCEPTION',
-        statusCode: 'Internal Server Error',
+        statusCode: 500,
         internal: `Rollback exception: ${e}`,
         external: {
           en: 'Rollback exception',

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import apis from "@public/api-calls";
 import { ActionDialog } from "@public/components/ActionDialog";
 import { Input } from "@public/components/ui/input";
 import { Label } from "@public/components/ui/label";
-import rpcClient from "@public/rpc-client";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface AddTableDialogProps {
@@ -25,14 +25,14 @@ export function AddTableDialog({
     if (tableName.trim() && !isLoading) {
       setIsLoading(true);
       try {
-        const { data, error } = await rpcClient.api.v1.datastore[datastoreId].schema.patch({
+        const [data, error] = await apis["/api/v1/datastore/:id/schema"].PATCH({id: datastoreId},{
           type: "add-table",
           table: tableName.trim(),
         });
 
         if (error) {
           toast.error("Failed to add table", {
-            description: error.value?.message || "An error occurred while adding the table",
+            description: error,
           });
           return;
         }

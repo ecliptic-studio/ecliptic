@@ -1,10 +1,9 @@
 import type { TSession } from "@dto/TSession";
 import { createError } from "@error/t-error";
 import { type TKysely } from "@server/db";
-import type { PermissionAction, PermissionAllowedActionByType, PermissionTarget } from "@server/db.d";
+import type { TPermissionMeta } from "@server/dto/TPermissionMeta";
 import { ErrorCode } from "@server/error/error-code.enum";
 import type { TErrTuple } from "@server/error/error-code.types";
-import { type Selectable } from "kysely";
 
 export type PermissionMetadataControllerContext = {
   session: Pick<TSession, 'activeOrganizationId'>;
@@ -13,7 +12,7 @@ export type PermissionMetadataControllerContext = {
 
 export async function listPermissionMetadataController(
   ctx: PermissionMetadataControllerContext
-): Promise<TErrTuple<{ actions: PermissionAction[], targets: Selectable<PermissionTarget>[], allowedActionsByType: Selectable<PermissionAllowedActionByType>[] }>> {
+): Promise<TErrTuple<TPermissionMeta>> {
   try {
     const actionsPromise = ctx.db
       .selectFrom('permission_action')
@@ -40,7 +39,7 @@ export async function listPermissionMetadataController(
       .internal(msg)
       .external({ en: 'Failed to list MCP keys', de: 'Fehler beim Auflisten der MCP-Schlüssel' })
       .shouldLog(true)
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .buildEntry();
     return [null, err];
   }
