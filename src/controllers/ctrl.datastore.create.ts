@@ -38,7 +38,7 @@ export async function createDatastoreController(
     const err = createError(ErrorCode.CONTROLLER_DATASTORE_CREATE_UNIQUE_NAME)
     .internal(`Datastore ${args.internalName} exists`)
     .external({ en: `Datastore ${args.internalName} already exists`, de: `Datastore ${args.internalName} already exists` })
-    .statusCode('Conflict')
+    .statusCode(409)
     .buildEntry()
     return [null, err]
   }
@@ -135,7 +135,7 @@ export async function createDatastoreController(
     const err = createError(ErrorCode.CONTROLLER_DATASTORE_CREATE_FAILED)
       .internal(msg)
       .external({ en: 'Failed to create datastore', de: 'Fehler beim Erstellen des Datastores' })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry()
     return [null, err]

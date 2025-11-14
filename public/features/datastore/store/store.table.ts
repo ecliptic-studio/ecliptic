@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
-import rpcClient from "@public/rpc-client";
+import apis from "@public/api-calls";
+import { createStore, type StoreApi } from "zustand";
 import type { TableRow } from "../types";
-import { createStore, useStore, type StoreApi } from "zustand";
 
 export type TTableDataStore = {
   tableData: TableRow[]
@@ -52,12 +51,10 @@ export function getTableStore(datastoreId: string, tableName: string, options?: 
   })
   function fetchTableData() {
     const { page, pageSize } = store.getState()
-    rpcClient.api.v1.datastore({ id: datastoreId })
-      .table({ tableName })
-      .get({query: {limit: pageSize, offset: (page - 1) * pageSize}})
-      .then(({ data, error }) => {
+    apis["/api/v1/datastore/:id/table/:tableName"].GET({id: datastoreId, tableName}, {limit: pageSize, offset: (page - 1) * pageSize} )
+      .then(([data, error]) => {
         if(error) {
-          store.setState({ error: error.value?.message || "Failed to fetch table data" });
+          store.setState({ error });
           return
         }
         if(data) {
@@ -69,49 +66,6 @@ export function getTableStore(datastoreId: string, tableName: string, options?: 
   setTimeout(() => {
     fetchTableData()
   }, 0);
-
-
-
-  // const [tableData, setTableData] = useState<TableRow[]>([]);
-  // const [isLoading, setIsLoading] = useState(true);
-  // const [error, setError] = useState<string | null>(null);
-
-  // useEffect(() => {
-  //   const fetchTableData = async () => {
-  //     if (!datastoreId || !tableName) return;
-
-  //     setIsLoading(true);
-  //     setError(null);
-
-  //     try {
-  //       // PostgREST syntax: use 'limit' instead of 'pageSize'
-  //       // Note: Not specifying 'select' will return all columns including ROWID
-  //       const { data, error: apiError } = await rpcClient.api.v1.datastore({ id: datastoreId }).table({ tableName }).get({
-  //         query: {
-  //           limit: 50,
-  //           offset: 0
-  //         }
-  //       });
-
-  //       if (apiError) {
-  //         setError(apiError.value?.message || "Failed to fetch table data");
-  //         setTableData([]);
-  //         return;
-  //       }
-
-  //       if (data) {
-  //         setTableData(data.data as TableRow[] || []);
-  //       }
-  //     } catch (err) {
-  //       setError("An unexpected error occurred");
-  //       setTableData([]);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
-
-  //   fetchTableData();
-  // }, [datastoreId, tableName]);
 
   return store;
 }

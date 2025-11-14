@@ -50,7 +50,7 @@ export async function getTableDataController(
           en: 'Datastore not found',
           de: 'Datastore nicht gefunden',
         })
-        .statusCode('Not Found')
+        .statusCode(404)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -65,7 +65,7 @@ export async function getTableDataController(
           en: `Table '${args.tableName}' not found`,
           de: `Tabelle '${args.tableName}' nicht gefunden`,
         })
-        .statusCode('Not Found')
+        .statusCode(404)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -86,7 +86,7 @@ export async function getTableDataController(
           en: 'Failed to access datastore',
           de: 'Fehler beim Zugriff auf Datastore',
         })
-        .statusCode('Internal Server Error')
+        .statusCode(500)
         .shouldLog(true)
         .buildEntry()
       ];
@@ -116,7 +116,7 @@ export async function getTableDataController(
           en: 'Failed to fetch table data',
           de: 'Fehler beim Abrufen der Tabellendaten',
         })
-        .statusCode(subroutineError.statusCode || 'Internal Server Error')
+        .statusCode(subroutineError.statusCode || 500)
         .shouldLog(true)
         .buildEntry();
       return [null, err];
@@ -145,7 +145,7 @@ export async function getTableDataController(
         en: 'Failed to fetch table data',
         de: 'Fehler beim Abrufen der Tabellendaten',
       })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry();
     return [null, err];

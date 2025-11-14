@@ -1,3 +1,4 @@
+import apis from "@public/api-calls";
 import { Button } from "@public/components/ui/button";
 import {
   Card,
@@ -12,12 +13,11 @@ import { getLangFx } from "@public/i18n/get-lang";
 import { t } from "@public/i18n/t";
 import type { PermissionAction, PermissionAllowedActionByType, PermissionTarget } from "@server/db.d";
 import type { Selectable } from "kysely";
-import { useMcpFormState } from "../hooks/useMcpFormState";
-import { DatastorePermissionCard } from "./datastore-permission-card";
-import rpcClient from "@public/rpc-client";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useMcpFormState } from "../hooks/useMcpFormState";
+import { DatastorePermissionCard } from "./datastore-permission-card";
 
 // Helper function to get allowed actions for a permission type
 function getActionsForPermissionType(
@@ -117,23 +117,23 @@ export function EditMcpForm({
 
       if (isEditMode && existingKey) {
         // Call API to update MCP key
-        const response = await rpcClient.api.v1["mcp-keys"]({id: existingKey.id}).patch({
+        const [data, error] = await apis["/api/v1/mcp-keys/:id"].PATCH({id: existingKey.id}, {
           name: formState.name,
           permissions: permissionsPayload,
-        });
+        })
 
-        if (response.error) {
-          throw new Error(response.error.value?.message || "Failed to update API key");
+        if (error) {
+          throw new Error(error);
         }
       } else {
         // Call API to create MCP key
-        const response = await rpcClient.api.v1["mcp-keys"].post({
+        const [data, error] = await apis["/api/v1/mcp-keys"].POST({
           name: formState.name,
           permissions: permissionsPayload,
-        });
+        })
 
-        if (response.error) {
-          throw new Error(response.error.value?.message || "Failed to create API key");
+        if (error) {
+          throw new Error(error);
         }
       }
 

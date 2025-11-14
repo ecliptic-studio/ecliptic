@@ -51,7 +51,7 @@ export async function updateTableRowsController(
           en: 'Update operation requires filters to prevent accidental mass updates',
           de: 'Aktualisierungsvorgang erfordert Filter',
         })
-        .statusCode('Bad Request')
+        .statusCode(400)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -65,7 +65,7 @@ export async function updateTableRowsController(
           en: 'No columns to update',
           de: 'Keine Spalten zum Aktualisieren',
         })
-        .statusCode('Bad Request')
+        .statusCode(400)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -87,7 +87,7 @@ export async function updateTableRowsController(
           en: 'Datastore not found',
           de: 'Datastore nicht gefunden',
         })
-        .statusCode('Not Found')
+        .statusCode(404)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -104,7 +104,7 @@ export async function updateTableRowsController(
           en: `Table '${args.tableName}' not found`,
           de: `Tabelle '${args.tableName}' nicht gefunden`,
         })
-        .statusCode('Not Found')
+        .statusCode(404)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -128,7 +128,7 @@ export async function updateTableRowsController(
           en: 'Invalid data in update',
           de: 'Ungültige Daten in Aktualisierung',
         })
-        .statusCode('Bad Request')
+        .statusCode(400)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -149,7 +149,7 @@ export async function updateTableRowsController(
           en: 'Failed to access datastore',
           de: 'Fehler beim Zugriff auf Datastore',
         })
-        .statusCode('Internal Server Error')
+        .statusCode(500)
         .shouldLog(true)
         .buildEntry()
       ];
@@ -190,7 +190,7 @@ export async function updateTableRowsController(
         en: 'Failed to update rows',
         de: 'Fehler beim Aktualisieren der Zeilen',
       })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry();
     return [null, err];

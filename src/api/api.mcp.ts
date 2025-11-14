@@ -1,121 +1,76 @@
-// Controller handles HTTP related eg. routing, request validation
-import { createMcpKeyController } from '@server/controllers/ctrl.mcp.create-key';
-import { deleteMcpKeyController } from '@server/controllers/ctrl.mcp.delete-key';
+
+/**
+ * This is not /api/mcp* which is used to setup mcp endpoints, but the mcp server itself.
+ * Listening to /mcp
+ * MCP clients will connect to this endpoint.
+ * If you need to change mcp settings api refer to @src/api/api.mcp.ts
+ *
+ * This file is special and does not follow the rest of the server structure.
+ * That is okay. We want to avoid unnecessary complexity to the server structure.
+ *
+ */
+
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { listMcpKeysController } from '@server/controllers/ctrl.mcp.list';
-import { updateMcpKeyController } from '@server/controllers/ctrl.mcp.update-key';
 import { kysely } from '@server/db';
-import { mwAuthGuard } from '@server/mw/mw.auth-guard';
-import { jsonError } from '@server/server-helper';
-import { Elysia, status, t } from 'elysia';
+import { createMcpServerFn } from '@server/subroutines/mcp/create-mcp-server.fn';
+import type { BunRequest, Serve, Server } from 'bun';
+import { toFetchResponse, toReqRes } from 'fetch-to-node';
 
-export const apiMcp = new Elysia({ prefix: '/api/v1/mcp-keys', name: 'apiMcp' })
-	.use(mwAuthGuard)
-	.get(
-		'',
-		async (ctx) => {
-			
-			const [result, error] = await listMcpKeysController({
-				session: ctx.session,
-				db: kysely
-			})
 
-			if (error) {
-				return status(error.statusCode, jsonError(ctx, error))
-			}
+export const apiMcp: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/mcp'>, Server<undefined>, Response>>> = {
+  POST: async (request, server) => {
+    const key = new URLSearchParams(request.url.split('?')[1]).get('key') ?? (request.headers.get('authorization')?.split(' ')[1] ?? null)
+    if (!key) {
+      return new Response('Unauthorized', { status: 401 });
+    }
 
-			return result
-		}, {
-			auth: true,
-			detail: {
-				summary: 'Get all MCP API keys',
-				description: 'Retrieve all MCP API keys for the authenticated user\'s active organization',
-				tags: ['MCP']
-			}
-		}
-	)
-	.post(
-		'',
-		async (ctx) => {
-			const [result, error] = await createMcpKeyController({
-				user: ctx.user,
-				session: ctx.session,
-				db: kysely
-			}, ctx.body)
+    const mcpKey = await kysely.selectFrom('mcpkey').where("id", "=", key).selectAll().executeTakeFirst();
+    if (!mcpKey) {
+      return new Response('Unauthorized', { status: 401 });
+    }
 
-			if (error) {
-				return status(error.statusCode, jsonError(ctx, error))
-			}
-			return result;
-		}, {
-			auth: true,
-			body: t.Object({
-				name: t.String({ minLength: 1 }),
-				permissions: t.Array(t.Object({ actionId: t.String(), targetId: t.String() }))
-			}),
-			detail: {
-				summary: 'Create a new MCP API key',
-				description: 'Generate a new MCP API key with specified permissions',
-				tags: ['MCP']
-			}
-		}
-	)
-	.delete(
-		'/:id',
-		async (ctx) => {
-			const [result, error] = await deleteMcpKeyController({
-				session: ctx.session,
-				db: kysely
-			}, { id: ctx.params.id })
+    const [mcpKeys, error] = await listMcpKeysController({db: kysely, session: {activeOrganizationId: mcpKey.organization_id} as any})
+    if (error) {
+      return new Response('Internal Server Error', { status: 500 });
+    }
+    const mcpKeyObj = mcpKeys.find(key => key.id === mcpKey.id);
+    if (!mcpKeyObj) {
+      return new Response('Unauthorized', { status: 401 });
+    }
 
-			ctx.set.headers['accept'] = 'application/json';
-			if (error) {
-				return status(error.statusCode, jsonError(ctx, error))
-			}
+    const mcpServer = await createMcpServerFn({db: kysely}, {mcpKey: mcpKeyObj, organizationId: mcpKey.organization_id})
 
-			return result;
-		}, {
-			auth: true,
-			params: t.Object({
-				id: t.String({ minLength: 1 })
-			}),
-			detail: {
-				summary: 'Delete an MCP API key',
-				description: 'Delete an MCP API key by ID. The key must belong to the authenticated user\'s organization.',
-				tags: ['MCP']
-			}
-		}
-	)
-	.patch(
-		'/:id',
-		async (ctx) => {
-			const [result, error] = await updateMcpKeyController({
-				session: ctx.session,
-				db: kysely
-			}, {
-				id: ctx.params.id,
-				name: ctx.body.name,
-				permissions: ctx.body.permissions
-			})
 
-			ctx.set.headers['accept'] = 'application/json';
-			if (error) {
-				return status(error.statusCode, jsonError(ctx, error))
-			}
+    const { req, res } = toReqRes(request);
+    
+    try {
+      const body = await request.json();
+      const transport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+        enableJsonResponse: true
+      });
 
-			return result;
-		}, {
-			auth: true,
-			params: t.Object({
-				id: t.String({ minLength: 1 })
-			}),
-			body: t.Object({
-				name: t.Optional(t.String({ minLength: 1 })),
-				permissions: t.Array(t.Object({ actionId: t.String(), targetId: t.String() }))
-			}),
-			detail: {
-				summary: 'Update an MCP API key',
-				description: 'Update an MCP API key\'s name and/or permissions. When permissions are provided, all existing permission mappings will be replaced with the new ones. The key must belong to the authenticated user\'s organization.',
-				tags: ['MCP']
-			}
-		}
-	)
+      res.on('close', () => {
+        transport.close();
+      });
+
+      await mcpServer.connect(transport);
+      await transport.handleRequest(req, res, body);
+    } catch (error) {
+      console.error('Error handling MCP request:', error);
+      if (!res.headersSent) {
+        return Response.json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: 'Internal server error'
+          },
+          id: null
+        }, { status: 500 })
+      }
+    }
+
+    return toFetchResponse(res);
+  }
+}

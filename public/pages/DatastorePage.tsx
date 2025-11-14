@@ -1,12 +1,12 @@
+import apis from "@public/api-calls";
+import { Button } from "@public/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@public/components/ui/card";
+import { Input } from "@public/components/ui/input";
+import { globalStore, type TGlobalStore } from "@public/store/store.global";
+import { produce } from "immer";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import rpcClient from "@public/rpc-client";
-import { Button } from "@public/components/ui/button";
-import { Input } from "@public/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@public/components/ui/card";
-import { globalStore, type TGlobalStore } from "@public/store/store.global";
-import { produce } from "immer";
 
 export function DatastorePage() {
   const navigate = useNavigate();
@@ -28,21 +28,20 @@ export function DatastorePage() {
     setLoading(true);
 
     try {
-      const response = await rpcClient.api.v1.datastore.post({
-        internalName: formData.internalName,
-        provider: "sqlite", // Hardcoded as per requirements
-      });
+      const [data, error] = await apis['/api/v1/datastore'].POST({internalName: formData.internalName, provider: "sqlite"})
+      
 
-      if (response.error) {
+      if (error !== null) {
         toast.error("Failed to create datastore", {
-          description: response.error.value.message,
+          description: error,
         });
         setLoading(false);
         return;
       }
 
+
       globalStore.setState(produce((state:TGlobalStore) => {
-        state.datastores.push(response.data);
+        state.datastores.push(data);
       }))
 
       toast.success("Datastore created successfully!", {

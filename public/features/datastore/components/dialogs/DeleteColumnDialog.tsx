@@ -1,5 +1,5 @@
+import apis from "@public/api-calls";
 import { ActionDialog } from "@public/components/ActionDialog";
-import rpcClient from "@public/rpc-client";
 import { globalStore } from "@public/store/store.global";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -28,15 +28,15 @@ export function DeleteColumnDialog({
 
     setIsLoading(true);
     try {
-      const { data, error } = await rpcClient.api.v1.datastore({ id: metadata.datastoreId }).schema.patch({
+      const [data, error] = await apis["/api/v1/datastore/:id/schema"].PATCH({id: metadata.datastoreId}, {
         type: "drop-column",
         table: metadata.tableName,
         column: metadata.columnName,
-      });
+      })
 
       if (error) {
         toast.error("Failed to delete column", {
-          description: error.value?.message || "An error occurred while deleting the column",
+          description: error
         });
         return;
       }
@@ -67,7 +67,7 @@ export function DeleteColumnDialog({
       onConfirm={handleConfirm}
       confirmText="Delete Column"
       confirmDisabled={isLoading}
-      variant="destructive"
+      confirmVariant="destructive"
     >
       <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
         <strong>Warning:</strong> This action cannot be undone. All data in this column will be permanently deleted.

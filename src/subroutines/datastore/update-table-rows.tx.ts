@@ -46,7 +46,7 @@ export function updateTableRowsTx(
         en: 'No columns to update',
         de: 'Keine Spalten zum Aktualisieren',
       })
-      .statusCode('Bad Request')
+      .statusCode(400)
       .shouldLog(false)
       .buildEntry();
     return [null, err, rollbacks];
@@ -59,7 +59,7 @@ export function updateTableRowsTx(
         en: 'Update operation requires filters to prevent accidental mass updates',
         de: 'Aktualisierungsvorgang erfordert Filter, um versehentliche Massenaktualisierungen zu verhindern',
       })
-      .statusCode('Bad Request')
+      .statusCode(400)
       .shouldLog(false)
       .buildEntry();
     return [null, err, rollbacks];
@@ -109,7 +109,7 @@ export function updateTableRowsTx(
         en: 'Failed to update rows',
         de: 'Fehler beim Aktualisieren der Zeilen',
       })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry();
     return [null, err, rollbacks];

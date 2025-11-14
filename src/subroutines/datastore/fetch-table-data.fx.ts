@@ -67,7 +67,7 @@ export function fetchTableDataFx(
             en: `Table '${args.tableName}' not found`,
             de: `Tabelle '${args.tableName}' nicht gefunden`,
           })
-          .statusCode("Not Found")
+          .statusCode(404)
           .shouldLog(false)
           .buildEntry(),
         rollbacks,
@@ -99,7 +99,7 @@ export function fetchTableDataFx(
             en: "Invalid query parameters",
             de: "Ungültige Abfrageparameter",
           })
-          .statusCode("Bad Request")
+          .statusCode(400)
           .shouldLog(false)
           .buildEntry(),
         rollbacks,
@@ -121,7 +121,7 @@ export function fetchTableDataFx(
             en: "Failed to fetch table data",
             de: "Tabellendaten konnten nicht abgerufen werden",
           })
-          .statusCode("Internal Server Error")
+          .statusCode(500)
           .shouldLog(true)
           .buildEntry(),
         rollbacks,
@@ -156,7 +156,7 @@ export function fetchTableDataFx(
           en: "Failed to fetch table data",
           de: "Tabellendaten konnten nicht abgerufen werden",
         })
-        .statusCode("Internal Server Error")
+        .statusCode(500)
         .shouldLog(true)
         .buildEntry(),
       rollbacks,

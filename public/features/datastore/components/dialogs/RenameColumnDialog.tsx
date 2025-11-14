@@ -1,7 +1,7 @@
+import apis from "@public/api-calls";
 import { ActionDialog } from "@public/components/ActionDialog";
 import { Input } from "@public/components/ui/input";
 import { Label } from "@public/components/ui/label";
-import rpcClient from "@public/rpc-client";
 import { globalStore } from "@public/store/store.global";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -37,16 +37,17 @@ export function RenameColumnDialog({
     if (currentName.trim() && newName.trim() && metadata && !isLoading) {
       setIsLoading(true);
       try {
-        const { data, error } = await rpcClient.api.v1.datastore({ id: metadata.datastoreId }).schema.patch({
+
+        const [data, error] = await apis["/api/v1/datastore/:id/schema"].PATCH({id: metadata.datastoreId}, {
           type: "rename-column",
           table: metadata.tableName,
           column: currentName.trim(),
-          new_name: newName.trim(),
-        });
+          new_name: newName.trim(),          
+        })
 
         if (error) {
           toast.error("Failed to rename column", {
-            description: error.value?.message || "An error occurred while renaming the column",
+            description: error
           });
           return;
         }

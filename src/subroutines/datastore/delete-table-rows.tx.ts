@@ -41,7 +41,7 @@ export function deleteTableRowsTx(
         en: 'Delete operation requires at least one ROWID',
         de: 'Löschvorgang erfordert mindestens eine ROWID',
       })
-      .statusCode('Bad Request')
+      .statusCode(400)
       .shouldLog(false)
       .buildEntry();
     return [null, err, rollbacks];
@@ -77,7 +77,7 @@ export function deleteTableRowsTx(
         en: 'Failed to delete rows',
         de: 'Fehler beim Löschen der Zeilen',
       })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry();
     return [null, err, rollbacks];

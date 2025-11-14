@@ -35,7 +35,7 @@ export async function datastoreDropTx(
     return [
       null,
       createError(ErrorCode.SR_DATASTORE_DELETE_FAILED)
-        .statusCode('Internal Server Error')
+        .statusCode(500)
         .internal(`Failed to delete datastore ${args.fileName}: ${error}`)
         .external({
           de: 'Datastore konnte nicht gelöscht werden',

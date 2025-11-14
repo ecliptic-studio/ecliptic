@@ -1,3 +1,4 @@
+import apis from "@public/api-calls";
 import { ActionDialog } from "@public/components/ActionDialog";
 import { Button } from "@public/components/ui/button";
 import {
@@ -12,7 +13,6 @@ import {
 } from "@public/components/ui/dropdown-menu";
 import { Input } from "@public/components/ui/input";
 import { Label } from "@public/components/ui/label";
-import rpcClient from "@public/rpc-client";
 import { globalStore } from "@public/store/store.global";
 import { ChevronDownIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -53,17 +53,18 @@ export function AddColumnDialog({
     if (columnName.trim() && metadata && !isLoading) {
       setIsLoading(true);
       try {
-        const { data, error } = await rpcClient.api.v1.datastore({ id: metadata.datastoreId }).schema.patch({
+        const [data, error] = await apis["/api/v1/datastore/:id/schema"].PATCH({id: metadata.datastoreId}, {
           type: "add-column",
           table: metadata.tableName,
           column: columnName.trim(),
           db_type: metadata.dataType,
-          ...(foreignKey ? { foreign_key: foreignKey } : {}),
-        });
+          ...(foreignKey ? { foreign_key: foreignKey } : {}),          
+        })
+
 
         if (error) {
           toast.error("Failed to add column", {
-            description: error.value?.message || "An error occurred while adding the column",
+            description: error
           });
           return;
         }

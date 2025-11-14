@@ -53,7 +53,7 @@ export async function createDatastoreTx(
     return [
       null,
       createError(ErrorCode.SR_DATASTORE_CREATE_FAILED)
-        .statusCode('Internal Server Error')
+        .statusCode(500)
         .internal(`Failed to create datastore: ${error}`)
         .external({
           de: 'Datastore konnte nicht erstellt werden',

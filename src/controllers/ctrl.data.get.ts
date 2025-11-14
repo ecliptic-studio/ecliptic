@@ -39,7 +39,7 @@ export async function getDataController(
       .internal(msg)
       .external({ en: 'Failed to retrieve data', fallback: 'Failed to retrieve data' })
       .shouldLog(true)
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .buildEntry();
     return [null, err];
   }

@@ -1,4 +1,4 @@
-import rpcClient from "@public/rpc-client";
+import apis from "@public/api-calls";
 import { getCoreRowModel, useReactTable, type RowSelectionState } from "@tanstack/react-table";
 import { enableMapSet, produce } from "immer";
 import { useSearchParams } from "react-router-dom";
@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { useStore } from "zustand";
 import { getTableStore, type TTableDataStore } from "../store/store.table";
 import { useColumnManagement, type TableSchema } from "./useColumnManagement";
-import { useEffect } from "react";
 
 // Enable Immer's MapSet plugin for working with Map and Set
 enableMapSet();
@@ -108,10 +107,10 @@ export function useTable(datastoreId: string, tableName: string, tableSchema: Ta
       }
     })
 
-    rpcClient.api.v1.datastore({ id: datastoreId }).table({ tableName }).post(parsedRow)
-      .then(({ data, error }) => {
+    apis["/api/v1/datastore/:id/table/:tableName"].POST({id: datastoreId, tableName}, parsedRow)
+      .then(([data, error]) => {
         if (error) {
-          toast.error(error.value?.message || 'Failed to save pending row')
+          toast.error(error)
         }
         if (data) {
           toast.success('Pending row saved')
@@ -162,18 +161,12 @@ export function useTable(datastoreId: string, tableName: string, tableSchema: Ta
     // Group changes by row and send one request per row
     const promises = Array.from(pendingRowEdits.entries()).map(async ([rowId, changes]) => {
       try {
-        // PostgREST syntax: query params contain the WHERE filter, body contains the updates
-        const { data, error } = await rpcClient.api.v1
-          .datastore({ id: datastoreId })
-          .table({ tableName })
-          .patch(changes, {
-            query: {
-              _rowid_: `eq.${rowId}` // PostgREST WHERE filter must be _rowid_
-            }
-          })
+
+        // PostgREST syntax: query params contain the WHERE filter, body contains the updates, query must be _rowid_
+        const [data, error] = await apis["/api/v1/datastore/:id/table/:tableName"].PATCH({id: datastoreId, tableName}, changes, {_rowid_: `eq.${rowId}`})
 
         if (error) {
-          toast.error(`Failed to update row ${rowId}: ${error.value?.message}`)
+          toast.error(`Failed to update row ${rowId}: ${error}`)
           return { success: false, rowId }
         }
 
@@ -237,15 +230,10 @@ export function useTable(datastoreId: string, tableName: string, tableSchema: Ta
 
     // Send single DELETE request with all rowids
     try {
-      const { error } = await rpcClient.api.v1
-        .datastore({ id: datastoreId })
-        .table({ tableName })
-        .delete({
-          rowids: rowIdsToDelete
-        })
+      const [, error] = await apis["/api/v1/datastore/:id/table/:tableName"].DELETE({id: datastoreId, tableName}, {rowids: rowIdsToDelete})
 
       if (error) {
-        toast.error(`Failed to delete rows: ${error.value?.message}`)
+        toast.error(`Failed to delete rows: ${error}`)
         return
       }
 

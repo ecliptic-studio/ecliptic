@@ -97,6 +97,7 @@ export function DatastoreTablePage() {
     return () => clearHeader();
   }, [datastore, setHeaderContent, clearHeader, tableName, id, openDialog]);
 
+  // NOTE: flickers on load until datastore is loaded
   if (!datastore) {
     return (
       <div className="flex items-center justify-center h-full p-8">

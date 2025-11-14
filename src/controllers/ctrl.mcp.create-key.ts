@@ -55,7 +55,7 @@ export async function createMcpKeyController(
         .internal('MCP key not found after creation')
         .external({ en: 'Failed to create MCP key', de: 'Fehler beim Erstellen des MCP-Schlüssels' })
         .shouldLog(true)
-        .statusCode('Internal Server Error')
+        .statusCode(500)
         .buildEntry()];
     }
 
@@ -66,7 +66,7 @@ export async function createMcpKeyController(
       .internal(msg)
       .external({ en: 'Failed to create MCP key', de: 'Fehler beim Erstellen des MCP-Schlüssels' })
       .shouldLog(true)
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .buildEntry();
     return [null, err];
   }

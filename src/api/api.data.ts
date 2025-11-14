@@ -1,31 +1,25 @@
 // Controller handles HTTP related eg. routing, request validation
 import { getDataController } from '@server/controllers/ctrl.data.get'
 import { kysely } from '@server/db'
-import { jsonError } from '@server/server-helper'
-import { Elysia, status } from 'elysia'
-import { mwAuthGuard } from '../mw/mw.auth-guard'
+import { resolveSession } from '@server/mw/mw.auth-guard'
+import { resolveLang } from '@server/mw/mw.lang'
+import { toErrorResponse } from '@server/server-helper'
+import { type BunRequest, type Serve, type Server } from "bun"
 
-export const apiData = new Elysia({ prefix: '/api/v1/data', name: 'apiData' })
-	.use(mwAuthGuard)
-	.get(
-		'',
-		async (ctx) => {
-			const [result, error] = await getDataController({
-				session: ctx.session,
-				db: kysely
-			})
+export const apiData: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/data'>, Server<undefined>, Response>>> = {
+  GET: async (req, server) => {
+		const session = await resolveSession(req.headers)
+		const lang = resolveLang(req.headers)
+		if (!session) return Response.json({error: 'Unauthorized'}, {status: 401})
 
-			if (error) {
-				return status(error.statusCode, jsonError(ctx, error))
-			}
+		const [result, error] = await getDataController({
+			session: session.session,
+			db: kysely
+		})
 
-			return result
-		}, {
-			auth: true,
-			detail: {
-				summary: 'Get all data slices',
-				description: 'Returns all data slices for the user\'s active organization. Currently returns datastores only.',
-				tags: ['Data']
-			}
-		}
-	)
+		if (error)
+			return toErrorResponse({req, user: session.user, session: session.session, lang, error})
+
+		return Response.json(result)
+	}
+}

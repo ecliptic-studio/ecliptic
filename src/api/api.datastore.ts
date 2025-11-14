@@ -1,159 +1,27 @@
 // Controller handles HTTP related eg. routing, request validation
 import { createDatastoreController } from '@server/controllers/ctrl.datastore.create';
-import { dropDatastoreController } from '@server/controllers/ctrl.datastore.drop';
-import { renameDatastoreController } from '@server/controllers/ctrl.datastore.rename';
-import { schemaChangeDatastoreController } from '@server/controllers/ctrl.datastore.schema-change';
 import { kysely } from '@server/db';
-import { mwAuthGuard } from '@server/mw/mw.auth-guard';
-import { jsonError } from '@server/server-helper';
-import { Elysia, status, t } from 'elysia';
+import { resolveSession } from '@server/mw/mw.auth-guard';
+import { resolveLang } from '@server/mw/mw.lang';
+import { toErrorResponse } from '@server/server-helper';
+import type { BunRequest, Serve, Server } from 'bun';
+import { apiTypes } from './api-types';
 
-const createDatastoreSchema = t.Object({
-  internalName: t.String({ minLength: 1, maxLength: 255 }),
-  provider: t.Union([t.Literal('sqlite')]), // no turso yet
-})
+export const apiDatastore: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/datastore'>, Server<undefined>, Response>>> = {
+  POST: async (req, server) => {
+    const session = await resolveSession(req.headers)
+    const lang = resolveLang(req.headers)
+    if (!session) return Response.json({error: 'Unauthorized'}, {status: 401})
 
-const renameDatastoreSchema = t.Object({
-  internalName: t.String({ minLength: 1, maxLength: 255 }),
-})
+    const body = await req.json();
+    const validatedBody = apiTypes['/api/v1/datastore'].POST.body.safeParse(body);
 
-const schemaChangeDatastoreSchema = t.Union([
-  t.Object({
-    type: t.Literal('add-column'),
-    table: t.String({ minLength: 1 }),
-    column: t.String({ minLength: 1 }),
-    db_type: t.Union([
-      t.Literal('TEXT'),
-      t.Literal('INTEGER'),
-      t.Literal('REAL'),
-      t.Literal('BLOB')
-    ]),
-    foreign_key: t.Optional(t.Object({
-      table: t.String({ minLength: 1 }),
-      column: t.String({ minLength: 1 })
-    }))
-  }, {title: 'Add column'}),
-  t.Object({
-    type: t.Literal('drop-column'),
-    table: t.String({ minLength: 1 }),
-    column: t.String({ minLength: 1 })
-  }, {title: 'Drop column'}),
-  t.Object({
-    type: t.Literal('rename-column'),
-    table: t.String({ minLength: 1 }),
-    column: t.String({ minLength: 1 }),
-    new_name: t.String({ minLength: 1 })
-  }, {title: 'Rename column'}),
-  t.Object({
-    type: t.Literal('rename-table'),
-    table: t.String({ minLength: 1 }),
-    new_name: t.String({ minLength: 1 })
-  }, {title: 'Rename table'}),
-  t.Object({
-    type: t.Literal('add-table'),
-    table: t.String({ minLength: 1 })
-  }, {title: 'Add table'}),
-  t.Object({
-    type: t.Literal('drop-table'),
-    table: t.String({ minLength: 1 })
-  }, {title: 'Drop table'})
-])
+    if (!validatedBody.success) return Response.json({error: validatedBody.error.message}, {status: 400})
 
-export const apiDatastore = new Elysia({
-  prefix: '/api/v1/datastore',
-  name: 'apiDatastore'
-})
-  .use(mwAuthGuard)
-  .post(
-    '',
-    async (ctx) => {
-      const [result, error] = await createDatastoreController({ session: ctx.session, db: kysely }, ctx.body);
-      ctx.set.headers['accept'] = 'application/json'
-      if(error) return status(error.statusCode, jsonError(ctx, error))
+    const [result, error] = await createDatastoreController({ session: session.session, db: kysely }, { provider: validatedBody.data.provider, internalName: validatedBody.data.internalName });
 
-      return result
-    },
-    {
-      auth: true,
-      body: createDatastoreSchema,
-      detail: {
-        summary: 'Create a new datastore',
-        description: 'Creates a new SQLite database in the filesystem and tracks it in the database',
-        tags: ['Datastore']
-      }
-    }
-  )
-  .patch(
-    '/:id',
-    async (ctx) => {
-      const [result, error] = await renameDatastoreController(
-        { session: ctx.session, db: kysely },
-        { id: ctx.params.id, internalName: ctx.body.internalName }
-      );
-      ctx.set.headers['accept'] = 'application/json';
-      if (error) return status(error.statusCode ?? 400, jsonError(ctx, error));
+    if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error})
 
-      return result;
-    },
-    {
-      auth: true,
-      params: t.Object({
-        id: t.String({ minLength: 1 })
-      }),
-      body: renameDatastoreSchema,
-      detail: {
-        summary: 'Rename a datastore',
-        description: 'Renames a datastore and updates associated permission targets',
-        tags: ['Datastore']
-      }
-    }
-  )
-  .patch(
-    '/:id/schema',
-    async (ctx) => {
-      const [result, error] = await schemaChangeDatastoreController(
-        { session: ctx.session, db: kysely },
-        { id: ctx.params.id, change: ctx.body }
-      );
-      ctx.set.headers['accept'] = 'application/json';
-      if (error) return status(error.statusCode, jsonError(ctx, error));
-
-      return result;
-    },
-    {
-      auth: true,
-      params: t.Object({
-        id: t.String({ minLength: 1 })
-      }),
-      body: schemaChangeDatastoreSchema,
-      detail: {
-        summary: 'Modify datastore schema',
-        description: 'Modifies the schema of a datastore by adding, dropping, or renaming columns and tables',
-        tags: ['Datastore']
-      }
-    }
-  )
-  .delete(
-    '/:id',
-    async (ctx) => {
-      const [result, error] = await dropDatastoreController(
-        { session: ctx.session, db: kysely },
-        { id: ctx.params.id }
-      );
-      ctx.set.headers['accept'] = 'application/json';
-      if (error) return status(error.statusCode, jsonError(ctx, error));
-
-      return result;
-    },
-    {
-      auth: true,
-      params: t.Object({
-        id: t.String({ minLength: 1 })
-      }),
-      detail: {
-        summary: 'Delete a datastore',
-        description: 'Deletes a datastore from the filesystem and database',
-        tags: ['Datastore']
-      }
-    }
-  );
+    return Response.json(result, {status: 201})
+  }
+}

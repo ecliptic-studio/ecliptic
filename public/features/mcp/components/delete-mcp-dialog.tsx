@@ -1,7 +1,7 @@
+import apis from "@public/api-calls";
 import { ActionDialog } from "@public/components/ActionDialog";
 import { Input } from "@public/components/ui/input";
 import { Label } from "@public/components/ui/label";
-import rpcClient from "@public/rpc-client";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import type { DeleteMcpKeyMetadata } from "../types";
@@ -30,12 +30,11 @@ export function DeleteMcpKeyDialog({ open, onOpenChange, metadata }: DeleteMcpKe
 
     setIsLoading(true);
     try {
-      // Mock API call - will be replaced with real endpoint
-      const { data, error } = await rpcClient.api.v1["mcp-keys"]({id: metadata.keyId}).delete();
+      const [data, error] = await apis["/api/v1/mcp-keys/:id"].DELETE({id: metadata.keyId})
 
       if (error) {
         toast.error("Failed to delete API key", {
-          description: error.value?.message || "An error occurred",
+          description: error
         });
         return;
       }

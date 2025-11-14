@@ -51,7 +51,7 @@ export async function insertTableRowsController(
           en: 'No data provided for insert',
           de: 'Keine Daten zum Einfügen bereitgestellt',
         })
-        .statusCode('Bad Request')
+        .statusCode(400)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -73,7 +73,7 @@ export async function insertTableRowsController(
           en: 'Datastore not found',
           de: 'Datastore nicht gefunden',
         })
-        .statusCode('Not Found')
+        .statusCode(404)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -90,7 +90,7 @@ export async function insertTableRowsController(
           en: `Table '${args.tableName}' not found`,
           de: `Tabelle '${args.tableName}' nicht gefunden`,
         })
-        .statusCode('Not Found')
+        .statusCode(404)
         .shouldLog(false)
         .buildEntry();
       return [null, err];
@@ -115,7 +115,7 @@ export async function insertTableRowsController(
             en: `Invalid data in row ${i + 1}`,
             de: `Ungültige Daten in Zeile ${i + 1}`,
           })
-          .statusCode('Bad Request')
+          .statusCode(400)
           .shouldLog(false)
           .buildEntry();
         return [null, err];
@@ -137,7 +137,7 @@ export async function insertTableRowsController(
           en: 'Failed to access datastore',
           de: 'Fehler beim Zugriff auf Datastore',
         })
-        .statusCode('Internal Server Error')
+        .statusCode(500)
         .shouldLog(true)
         .buildEntry()
       ];
@@ -162,7 +162,7 @@ export async function insertTableRowsController(
           en: 'Failed to insert rows',
           de: 'Fehler beim Einfügen der Zeilen',
         })
-        .statusCode(insertError.statusCode || 'Internal Server Error')
+        .statusCode(insertError.statusCode || 500)
         .shouldLog(true)
         .buildEntry();
       return [null, err];
@@ -185,7 +185,7 @@ export async function insertTableRowsController(
         en: 'Failed to insert rows',
         de: 'Fehler beim Einfügen der Zeilen',
       })
-      .statusCode('Internal Server Error')
+      .statusCode(500)
       .shouldLog(true)
       .buildEntry();
     return [null, err];

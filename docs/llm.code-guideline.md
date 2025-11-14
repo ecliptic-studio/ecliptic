@@ -58,7 +58,7 @@ types dont contain understanding, only structure, it's boilerplate, move out of 
 
 ### File structure
 ./public -> Frontend code (React SPA)
-./src -> Server code (Bun, Elysiajs, Sqlite)
+./src -> Server code (Bun, Sqlite)
 ./migrations -> db or ts files. with current timestamp prefix
 ./scripts -> helper scripts
 ./styles -> tailwindcss + shadcn styles

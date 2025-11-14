@@ -1,8 +1,8 @@
-import { useState } from "react";
+import apis from "@public/api-calls";
 import { ActionDialog } from "@public/components/ActionDialog";
 import { Input } from "@public/components/ui/input";
 import { Label } from "@public/components/ui/label";
-import rpcClient from "@public/rpc-client";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface RenameTableDialogProps {
@@ -28,15 +28,15 @@ export function RenameTableDialog({
     if (selectedTable.trim() && newName.trim() && !isLoading) {
       setIsLoading(true);
       try {
-        const { data, error } = await rpcClient.api.v1.datastore[datastoreId].schema.patch({
+        const [data, error] = await apis["/api/v1/datastore/:id/schema"].PATCH({id: datastoreId}, {
           type: "rename-table",
           table: selectedTable.trim(),
-          new_name: newName.trim(),
-        });
+          new_name: newName.trim(),          
+        })
 
         if (error) {
           toast.error("Failed to rename table", {
-            description: error.value?.message || "An error occurred while renaming the table",
+            description: error
           });
           return;
         }

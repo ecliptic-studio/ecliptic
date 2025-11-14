@@ -1,7 +1,7 @@
+import apis from "@public/api-calls";
 import { ActionDialog } from "@public/components/ActionDialog";
 import { Input } from "@public/components/ui/input";
 import { Label } from "@public/components/ui/label";
-import rpcClient from "@public/rpc-client";
 import { globalStore } from "@public/store/store.global";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -37,11 +37,11 @@ export function DeleteDatastoreDialog({
     if (isConfirmationValid && metadata && !isLoading) {
       setIsLoading(true);
       try {
-        const { data, error } = await rpcClient.api.v1.datastore({ id: metadata.datastoreId }).delete();
+        const [data, error] = await apis["/api/v1/datastore/:id"].DELETE({id: metadata.datastoreId})
 
         if (error) {
           toast.error("Failed to delete datastore", {
-            description: error.value?.message || "An error occurred while deleting the datastore",
+            description: error
           });
           return;
         }
