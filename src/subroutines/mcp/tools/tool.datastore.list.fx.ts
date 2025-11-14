@@ -42,7 +42,16 @@ export function toolDatastoreListFx(portal: TPortal, args: TArgs): TErrTuple<Reg
                 z.object({
                   name: z.string(),
                   order: z.number(),
-                  db_type: z.enum(['TEXT', 'INTEGER', 'REAL', 'BLOB'])
+                  db_type: z.enum(['TEXT', 'INTEGER', 'REAL', 'BLOB']),
+                  dflt_value: z.string().nullable(),
+                  notnull: z.boolean(),
+                  autoincrement: z.boolean(),
+                  foreign_key: z.object({
+                    table: z.string(),
+                    column: z.string(),
+                    on_update: z.string(),
+                    on_delete: z.string(),
+                  }).optional(),
                 })
               )
 
