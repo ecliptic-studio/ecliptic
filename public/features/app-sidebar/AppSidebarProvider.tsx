@@ -29,6 +29,7 @@ import {
   ChevronRight,
   CombineIcon,
   Database,
+  Mail,
   MoreVertical,
   Plus,
   Table
@@ -203,6 +204,44 @@ export function AppSidebarProvider() {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+
+          {/* Mailboxes Section */}
+          <SidebarGroup>
+            <SidebarGroupLabel className="flex items-center justify-between">
+              <div className="flex items-center">
+                Mailboxes
+              </div>
+              <button
+                onClick={() => {/* TODO: Add mailbox creation */}}
+                className="size-5 flex items-center justify-center rounded hover:bg-sidebar-accent"
+              >
+                <Plus className="size-4" />
+              </button>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton className="pl-2">
+                    <Mail className="size-4" />
+                    <span>work@example.com</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton className="pl-2">
+                    <Mail className="size-4" />
+                    <span>personal@gmail.com</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton className="pl-2">
+                    <Mail className="size-4" />
+                    <span>support@company.com</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+
           {/* THIS FIXES scroll bar */}
           <SidebarSeparator style={{width: '90%'}} />
           <SidebarMenu>
