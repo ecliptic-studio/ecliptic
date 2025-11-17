@@ -1,5 +1,13 @@
 import { Button } from "@public/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@public/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -7,12 +15,77 @@ import {
   DropdownMenuTrigger,
 } from "@public/components/ui/dropdown-menu";
 import { Input } from "@public/components/ui/input";
+import { betterAuthClient } from "@public/lib/auth-client";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 type Provider = "outlook" | "gmail";
+
+async function createEncryptedState(userId: string, email: string): Promise<string> {
+  const payload = {
+    userId,
+    email,
+    timestamp: Date.now(),
+  };
+
+  // Get encryption key from environment
+  const key = process.env.BUN_PUBLIC_SECRET!;
+
+  // Generate random IV (12 bytes for GCM)
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+
+  // Ensure key is 32 bytes
+  const keyBuffer = new TextEncoder().encode(key.padEnd(32, '0').slice(0, 32));
+
+  // Import key for Web Crypto API
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyBuffer,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt']
+  );
+
+  // Encrypt the data
+  const jsonData = JSON.stringify(payload);
+  const dataBuffer = new TextEncoder().encode(jsonData);
+
+  const encryptedBuffer = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    cryptoKey,
+    dataBuffer
+  );
+
+  // Convert to base64 and combine iv:encrypted
+  const ivBase64 = btoa(String.fromCharCode(...iv));
+  const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encryptedBuffer)));
+
+  return `${ivBase64}:${encryptedBase64}`;
+}
+
+function getMicrosoftAuthorizeUrl(encryptedState: string) {
+  const tenant = process.env.BUN_PUBLIC_MICROSOFT_TENANT_ID as string;
+  const clientId = process.env.BUN_PUBLIC_MICROSOFT_CLIENT_ID as string;
+  const redirectUri = process.env.BUN_PUBLIC_MICROSOFT_CALLBACK_URL as string;
+  const responseType = "code";
+  const responseMode = "query";
+  const scope = ["offline_access", "user.read", "Mail.ReadWrite", "Mail.Send"];
+
+  const authorizeUrlParams = new URLSearchParams({
+    client_id: clientId,
+    response_type: responseType,
+    redirect_uri: redirectUri,
+    response_mode: responseMode,
+    scope: scope.join(" "),
+    state: encryptedState,
+    prompt: "consent",
+  });
+
+  const url = `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize?${authorizeUrlParams.toString()}`;
+  return url;
+}
 
 export function MailboxPage() {
   const navigate = useNavigate();
@@ -21,6 +94,7 @@ export function MailboxPage() {
     provider: "outlook" as Provider,
   });
   const [loading, setLoading] = useState(false);
+  const [showDialog, setShowDialog] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -39,28 +113,41 @@ export function MailboxPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setShowDialog(true);
+  };
+
+  const handleContinueToMicrosoft = async () => {
     setLoading(true);
 
     try {
-      // TODO: Implement API call to add mailbox
-      // const [data, error] = await apis['/api/v1/mailbox'].POST({
-      //   inboxAddress: formData.inboxAddress,
-      //   provider: formData.provider
-      // });
+      // Get the current user session
+      const session = await betterAuthClient.getSession();
 
-      // Simulate API call for now
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!session?.data?.user?.id) {
+        toast.error("Authentication required", {
+          description: "Please sign in to continue.",
+        });
+        setLoading(false);
+        return;
+      }
 
-      toast.success("Mailbox added successfully!", {
-        description: `Mailbox "${formData.inboxAddress}" is ready to use.`,
-      });
-      setFormData({ inboxAddress: "", provider: "outlook" }); // Reset form
-      setLoading(false);
+      // Create encrypted state with userId and email
+      const encryptedState = await createEncryptedState(
+        session.data.user.id,
+        formData.inboxAddress
+      );
+
+      // Get Microsoft OAuth URL
+      const authUrl = getMicrosoftAuthorizeUrl(encryptedState);
+
+      // Redirect to Microsoft OAuth
+      window.location.href = authUrl;
     } catch (err) {
       toast.error("An unexpected error occurred", {
         description: "Please try again.",
       });
       setLoading(false);
+      setShowDialog(false);
     }
   };
 
@@ -76,16 +163,17 @@ export function MailboxPage() {
   };
 
   return (
-    <div className="p-8 min-h-full flex justify-center">
-      <div className="w-full max-w-md space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-semibold">Add New Mailbox</h1>
-          <p className="text-sm text-muted-foreground">
-            Connect your email inbox to sync and manage messages
-          </p>
-        </div>
+    <>
+      <div className="p-8 min-h-full flex justify-center">
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center space-y-2">
+            <h1 className="text-2xl font-semibold">Add New Mailbox</h1>
+            <p className="text-sm text-muted-foreground">
+              Connect your email inbox to sync and manage messages
+            </p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="inboxAddress" className="text-sm font-medium">
               Inbox Address
@@ -146,7 +234,7 @@ export function MailboxPage() {
             className="w-full"
             disabled={loading || formData.provider === "gmail"}
           >
-            {loading ? "Adding mailbox..." : "Add Mailbox"}
+            Add Mailbox
           </Button>
         </form>
 
@@ -161,6 +249,38 @@ export function MailboxPage() {
         </div>
       </div>
     </div>
+
+    <Dialog open={showDialog} onOpenChange={setShowDialog}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Microsoft Account Authorization</DialogTitle>
+          <DialogDescription>
+            You will be redirected to Microsoft to authorize access to your mailbox.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <p>
+            Please select a Microsoft account that has <strong>read/write access</strong> to the inbox address you provided: <strong>{formData.inboxAddress}</strong>
+          </p>
+          <p>
+            <strong>Note:</strong> Shared mailboxes are supported. Make sure the account you select has the necessary permissions.
+          </p>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => setShowDialog(false)}
+            disabled={loading}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleContinueToMicrosoft} disabled={loading}>
+            {loading ? "Redirecting..." : "Continue to Microsoft"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 }
 
