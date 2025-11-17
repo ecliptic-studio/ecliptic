@@ -1,6 +1,6 @@
 import { kysely } from "@server/db";
 import { toErrorResponse } from "@server/server-helper";
-import { exchangeCodeForTokenFx } from "@server/subroutines/microsoft/oauth";
+import { exchangeCodeForTokenFx } from "@server/subroutines/microsoft/oauth.fx";
 import type { BunRequest, Serve, Server } from "bun";
 
 export const authMicrosoft: Serve.Handler<BunRequest<'/auth/microsoft'>, Server<undefined>, Response> = async (req, server) => {

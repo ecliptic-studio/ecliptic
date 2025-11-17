@@ -37,3 +37,29 @@ export async function exchangeCodeForTokenFx(portal: {fetch: typeof fetch}, args
 
   return [tokenData, null]
 }
+
+
+export async function refreshTokenFx(portal: {fetch: typeof fetch}, args: {refresh_token: string}): Promise<TErrTuple<TTokenData>> {
+  const url = `https://login.microsoftonline.com/${process.env.BUN_PUBLIC_MICROSOFT_TENANT_ID}/oauth2/v2.0/token`
+  const params = new URLSearchParams()
+  params.append("client_id", process.env.BUN_PUBLIC_MICROSOFT_CLIENT_ID!)
+  params.append("scope", "offline_access user.read")
+  params.append("refresh_token", args.refresh_token)
+  params.append("grant_type", "refresh_token")
+  params.append("client_secret", process.env.MICROSOFT_SECRET!)
+
+  const tokenResponse = await portal.fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: params.toString(),
+  })
+
+  if (!tokenResponse.ok) {
+    return [null, createError(ErrorCode.SR_MICROSOFT_OAUTH_REFRESH_TOKEN_FAILED).buildEntry()]
+  }
+
+  const tokenData: TTokenData = await tokenResponse.json()
+  return [tokenData, null]
+}

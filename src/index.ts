@@ -10,9 +10,14 @@ import { apiPermission } from './api/api.permission'
 import { authMicrosoft } from './api/auth.microsoft'
 import { auth } from './auth'
 import { Client } from "@microsoft/microsoft-graph-client";
-import type { User, MailFolder } from "@microsoft/microsoft-graph-types";
+import type { User, MailFolder, PublicErrorDetail } from "@microsoft/microsoft-graph-types";
 import { resolveSession } from './mw/mw.auth-guard'
 import { kysely } from './db'
+
+import { createGraphServiceClient, GraphRequestAdapter } from "@microsoft/msgraph-sdk";
+import "@microsoft/msgraph-sdk-users";
+import { refreshTokenFx } from './subroutines/microsoft/oauth.fx'
+import { toErrorResponse } from './server-helper'
 
 
 const server = Bun.serve({
@@ -38,20 +43,38 @@ const server = Bun.serve({
 			const session = await resolveSession(req.headers)
 			if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 			try {
-		    const externalConnection = await kysely.selectFrom('external_connection').where('user_id', '=', session.user.id).where('type', '=', 'microsoft').selectAll().executeTakeFirst()
+				let externalConnection = await kysely.selectFrom('external_connection').where('user_id', '=', session.user.id).where('type', '=', 'microsoft').selectAll().executeTakeFirst()
 				if (!externalConnection) return Response.json({ error: 'Microsoft connection not found' }, { status: 404 })
-					const graphClient = Client.init({
-						authProvider: (done: (error: Error | null, accessToken: string) => void) => {
-							done(null, externalConnection.access_token);
-						},
-					})
-					
-				const response = await graphClient.api('/users').get();
-				const user = response as User;
-				console.log("User:", user);
-				return Response.json({ user });
-			} catch (err) {
-				console.error("Graph API Error:", err);
+
+				if (externalConnection.expires_at < new Date().toISOString()) {
+					const [tokenData, error] = await refreshTokenFx({ fetch }, { refresh_token: externalConnection.refresh_token })
+					if (error) return toErrorResponse({ req, error })
+					externalConnection = {
+						...externalConnection,
+						access_token: tokenData.access_token,
+						expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+					}
+					externalConnection = await kysely.updateTable('external_connection').set({
+						access_token: tokenData.access_token,
+						expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+						refresh_token: tokenData.refresh_token,
+						scope: tokenData.scope,
+					}).where('id', '=', externalConnection.id).returningAll().executeTakeFirstOrThrow()
+				}
+
+				const requestAdapter = new GraphRequestAdapter({
+					authenticateRequest: async (req) => {
+						req.headers.set('Authorization', new Set([`Bearer ${externalConnection.access_token}`]))
+					}
+				});
+				const graphServiceClient = createGraphServiceClient(requestAdapter);
+
+				const res = await graphServiceClient.users.get()
+
+
+				return Response.json({ res });
+			} catch (err: any) {
+				console.error("Graph API Error:", err, Object.keys(err));
 				return Response.json({ error: "Failed to fetch user data" }, { status: 500 });
 			}
 		},
