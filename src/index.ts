@@ -7,7 +7,13 @@ import { apiMcp } from './api/api.mcp'
 import { apiMcpKeys } from './api/api.mcp-keys'
 import { apiMcpKeysId } from './api/api.mcp-keys.:id'
 import { apiPermission } from './api/api.permission'
+import { authMicrosoft } from './api/auth.microsoft'
 import { auth } from './auth'
+import { Client } from "@microsoft/microsoft-graph-client";
+import type { User, MailFolder } from "@microsoft/microsoft-graph-types";
+import { resolveSession } from './mw/mw.auth-guard'
+import { kysely } from './db'
+
 
 const server = Bun.serve({
 	routes: {
@@ -28,6 +34,28 @@ const server = Bun.serve({
 		"/api/v1/mcp-keys/:id": apiMcpKeysId,
 		"/api/v1/permission/targets-and-actions": apiPermission,
 		"/mcp": apiMcp,
+		"/auth/microsoft/test": async (req) => {
+			const session = await resolveSession(req.headers)
+			if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+			try {
+		    const externalConnection = await kysely.selectFrom('external_connection').where('user_id', '=', session.user.id).where('type', '=', 'microsoft').selectAll().executeTakeFirst()
+				if (!externalConnection) return Response.json({ error: 'Microsoft connection not found' }, { status: 404 })
+					const graphClient = Client.init({
+						authProvider: (done: (error: Error | null, accessToken: string) => void) => {
+							done(null, externalConnection.access_token);
+						},
+					})
+					
+				const response = await graphClient.api('/users').get();
+				const user = response as User;
+				console.log("User:", user);
+				return Response.json({ user });
+			} catch (err) {
+				console.error("Graph API Error:", err);
+				return Response.json({ error: "Failed to fetch user data" }, { status: 500 });
+			}
+		},
+		"/auth/microsoft": authMicrosoft,
 		// Static routes
 		"/favicon.ico": new Response(await Bun.file("public/favicon.ico").bytes()),
 

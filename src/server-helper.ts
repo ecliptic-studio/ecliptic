@@ -5,6 +5,7 @@ import { kysely } from "@server/db";
 import type { TSession } from "@server/dto/TSession";
 import type { TUser } from "@server/dto/TUser";
 import type { BunRequest } from "bun";
+import { resolveLang } from "./mw/mw.lang";
 
 /**
  * Used in the api layer to translate an controller error to a http json response
@@ -28,7 +29,7 @@ export function toErrorResponse({req, user, session, lang, error}: {req: BunRequ
 
   return Response.json({
     type: error.code,
-    message: tExternal(lang ?? 'en', error)
+    message: tExternal(lang ?? resolveLang(req.headers), error)
   }, { status: error.statusCode })
 
 }

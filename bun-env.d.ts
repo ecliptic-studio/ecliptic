@@ -2,6 +2,10 @@
 
 declare module "bun" {
   interface Env {
+		MICROSOFT_SECRET: string;
+		BUN_PUBLIC_MICROSOFT_TENANT_ID: string;
+		BUN_PUBLIC_MICROSOFT_CALLBACK_URL: string;
+		BUN_PUBLIC_MICROSOFT_CLIENT_ID: string;
     DISPATCH_NAMESPACE: string;
 		DATABASE_URL: string;
 		GITHUB_USER_REPO_TOKEN: string;

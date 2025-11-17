@@ -67,6 +67,24 @@ export interface Datastore {
   updated_at: Generated<string>;
 }
 
+export interface ExternalConnection {
+  access_token: string;
+  created_at: Generated<string>;
+  expires_at: string;
+  id: string;
+  refresh_token: string;
+  scope: string;
+  subscriptions: string;
+  type: string;
+  updated_at: Generated<string>;
+  user_id: string;
+}
+
+export interface ExternalEmail {
+  email: string;
+  external_connection_id: string;
+}
+
 export interface Invitation {
   email: string;
   expiresAt: string;
@@ -139,7 +157,7 @@ export interface PermissionAction {
 export interface PermissionAllowedActionByType {
   id: Generated<number>;
   permission_action_id: string;
-  permission_type_id: string;
+  permission_type_id: number;
 }
 
 export interface PermissionMapping {
@@ -207,6 +225,8 @@ export interface DB {
   account: Account;
   apikey: Apikey;
   datastore: Datastore;
+  external_connection: ExternalConnection;
+  external_email: ExternalEmail;
   invitation: Invitation;
   log: Log;
   mcpkey: Mcpkey;
