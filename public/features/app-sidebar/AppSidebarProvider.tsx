@@ -212,7 +212,7 @@ export function AppSidebarProvider() {
                 Mailboxes
               </div>
               <button
-                onClick={() => {/* TODO: Add mailbox creation */}}
+                onClick={() => navigate("/mailbox")}
                 className="size-5 flex items-center justify-center rounded hover:bg-sidebar-accent"
               >
                 <Plus className="size-4" />
