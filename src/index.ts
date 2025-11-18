@@ -11,7 +11,7 @@ import { authMicrosoft } from './api/auth.microsoft'
 import { auth } from './auth'
 import { Client } from "@microsoft/microsoft-graph-client";
 import type { User, MailFolder, PublicErrorDetail } from "@microsoft/microsoft-graph-types";
-import { resolveSession } from './mw/mw.auth'
+import { resolveAuth } from './mw/mw.auth'
 import { kysely } from './db'
 
 import { createGraphServiceClient, GraphRequestAdapter } from "@microsoft/msgraph-sdk";
@@ -40,7 +40,7 @@ const server = Bun.serve({
 		"/api/v1/permission/targets-and-actions": apiPermission,
 		"/mcp": apiMcp,
 		"/auth/microsoft/test": async (req) => {
-			const session = await resolveSession(req.headers)
+			const session = await resolveAuth(req.headers)
 			if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 			try {
 				let externalConnection = await kysely.selectFrom('external_connection').where('user_id', '=', session.user.id).where('type', '=', 'microsoft').selectAll().executeTakeFirst()

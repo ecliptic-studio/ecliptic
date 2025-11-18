@@ -130,12 +130,12 @@ API routes call controllers:
 import { apiTypes } from './api-types';
 import { createDatastoreController } from '@server/controllers/ctrl.datastore.create';
 import { kysely } from '@server/db';
-import { resolveSession } from '@server/mw/mw.auth-guard';
+import { resolveAuth } from '@server/mw/mw.auth-guard';
 import { toErrorResponse } from '@server/server-helper';
 
 export const apiDatastore = {
   POST: async (req, server) => {
-    const session = await resolveSession(req.headers);
+    const session = await resolveAuth(req.headers);
     if (!session) return Response.json({error: 'Unauthorized'}, {status: 401});
 
     const body = await req.json();

@@ -7,7 +7,7 @@ The API layer is the HTTP interface of your application. It uses **Bun's native 
 ```typescript
 import { kysely } from '@server/db';
 import { tExternal } from '@server/error/t-error';
-import { resolveSession } from '@server/mw/mw.auth-guard';
+import { resolveAuth } from '@server/mw/mw.auth-guard';
 import { resolveLang } from '@server/mw/mw.lang';
 import { type BunRequest, type Serve, type Server } from 'bun';
 import { apiTypes } from './api-types';
@@ -16,7 +16,7 @@ import { controllerName } from '@server/controllers/module.controller';
 export const apiModule: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/module'>, Server<undefined>, Response>>> = {
   POST: async (req, server) => {
     // 1. Authentication
-    const session = await resolveSession(req.headers);
+    const session = await resolveAuth(req.headers);
     const lang = resolveLang(req.headers);
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -66,13 +66,13 @@ export const apiDatastore: Partial<Record<Serve.HTTPMethod, Serve.Handler<
 #### 2. Authentication Middleware
 
 ```typescript
-const session = await resolveSession(req.headers);
+const session = await resolveAuth(req.headers);
 const lang = resolveLang(req.headers);
 if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 ```
 
 **Authentication Flow:**
-- `resolveSession()` validates session from cookies/headers
+- `resolveAuth()` validates session from cookies/headers
 - Returns `{ user: TUser, session: TSession }` or `null`
 - `resolveLang()` extracts preferred language from headers
 - Return 401 immediately if no valid session
@@ -88,7 +88,7 @@ if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 ```typescript
 POST: async (req, server) => {
   // 1. Authentication
-  const session = await resolveSession(req.headers);
+  const session = await resolveAuth(req.headers);
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   // 2. Parse body
@@ -199,7 +199,7 @@ if (error) {
 
 ```typescript
 GET: async (req, server) => {
-  const session = await resolveSession(req.headers);
+  const session = await resolveAuth(req.headers);
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   // Access route params from req.params
@@ -228,7 +228,7 @@ import { renameDatastoreController } from '@server/controllers/ctrl.datastore.re
 import { dropDatastoreController } from '@server/controllers/ctrl.datastore.drop';
 import { kysely } from '@server/db';
 import { tExternal } from '@server/error/t-error';
-import { resolveSession } from '@server/mw/mw.auth-guard';
+import { resolveAuth } from '@server/mw/mw.auth-guard';
 import { resolveLang } from '@server/mw/mw.lang';
 import type { BunRequest, Serve, Server } from 'bun';
 import { apiTypes } from './api-types';
@@ -238,7 +238,7 @@ export const apiDatastoreId: Partial<Record<
   Serve.Handler<BunRequest<'/api/v1/datastore/:id'>, Server<undefined>, Response>
 >> = {
   PATCH: async (req, server) => {
-    const session = await resolveSession(req.headers);
+    const session = await resolveAuth(req.headers);
     const lang = resolveLang(req.headers);
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -260,7 +260,7 @@ export const apiDatastoreId: Partial<Record<
   },
 
   DELETE: async (req, server) => {
-    const session = await resolveSession(req.headers);
+    const session = await resolveAuth(req.headers);
     const lang = resolveLang(req.headers);
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -294,7 +294,7 @@ export const apiDatastoreId: Partial<Record<
 
 ```typescript
 GET: async (req, server) => {
-  const session = await resolveSession(req.headers);
+  const session = await resolveAuth(req.headers);
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   // Parse query parameters from URL
@@ -387,7 +387,7 @@ export const apiPublic: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunReques
 export const apiProtected: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/protected'>, Server<undefined>, Response>>> = {
   POST: async (req, server) => {
     // Authentication required
-    const session = await resolveSession(req.headers);
+    const session = await resolveAuth(req.headers);
     if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
     // session.user and session.session available here
@@ -450,7 +450,7 @@ HTTP Request
     ↓
 Bun HTTP Server Router
     ↓
-Resolve Session (resolveSession) → Injects user/session DTOs
+Resolve Session (resolveAuth) → Injects user/session DTOs
     ↓
 Parse Request Body (req.json())
     ↓
@@ -489,7 +489,7 @@ Response → DTO or error JSON
    - Single source of truth for validation logic
 
 5. **DTOs at the Boundary:**
-   - `session.user` and `session.session` are DTOs from resolveSession
+   - `session.user` and `session.session` are DTOs from resolveAuth
    - Controllers receive DTOs
    - Controllers return DTOs
    - Never leak framework types to controllers
@@ -585,7 +585,7 @@ if (error) {
 
 ```typescript
 GET: async (req, server) => {
-  const session = await resolveSession(req.headers);
+  const session = await resolveAuth(req.headers);
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const query = new URLSearchParams(req.url.split('?')[1]);
@@ -610,7 +610,7 @@ GET: async (req, server) => {
 
 ```typescript
 DELETE: async (req, server) => {
-  const session = await resolveSession(req.headers);
+  const session = await resolveAuth(req.headers);
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const [result, error] = await deleteDatastoreController(
@@ -631,7 +631,7 @@ DELETE: async (req, server) => {
 
 ```typescript
 PATCH: async (req, server) => {
-  const session = await resolveSession(req.headers);
+  const session = await resolveAuth(req.headers);
   if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
