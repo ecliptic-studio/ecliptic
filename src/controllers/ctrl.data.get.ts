@@ -2,6 +2,7 @@ import { toTDatastore, type TDatastore } from "@dto/TDatastore";
 import type { TSession } from "@dto/TSession";
 import { createError } from "@error/t-error";
 import { type TKysely } from "@server/db";
+import type { TMailbox } from "@server/dto/TMailbox";
 import { ErrorCode } from "@server/error/error-code.enum";
 import type { TErrTuple } from "@server/error/error-code.types";
 
@@ -12,6 +13,7 @@ export type DataControllerContext = {
 
 export type TDataResponse = {
   datastores: TDatastore[];
+  mailboxes: TMailbox[];
 };
 
 /**
@@ -29,15 +31,27 @@ export async function getDataController(
       .where('organization_id', '=', ctx.session.activeOrganizationId!)
       .execute();
 
+    const mailboxes = await ctx.db
+      .selectFrom('mailbox')
+      .innerJoin('external_mailbox_oauth', 'mailbox.external_mailbox_oauth_id', 'external_mailbox_oauth.id')
+      .select(['mailbox.email', 'mailbox.todo_count', 'external_mailbox_oauth.type'])
+      .where('external_mailbox_oauth.organization_id', '=', ctx.session.activeOrganizationId!)
+      .execute()
+      .then(rows => rows.map(row => ({
+        email: row.email,
+        todoCount: row.todo_count,
+        provider: row.type as 'microsoft' | 'google',
+      })));
+
     // Transform to DTOs
     const datastoreDtos = datastores.map(toTDatastore);
 
-    return [{ datastores: datastoreDtos }, null];
+    return [{ datastores: datastoreDtos, mailboxes }, null];
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Unknown error';
     const err = createError(ErrorCode.CONTROLLER_DATA_GET_FAILED)
       .internal(msg)
-      .external({ en: 'Failed to retrieve data', fallback: 'Failed to retrieve data' })
+      .external({ en: 'Failed to retrieve data', de: 'Fehler beim Abrufen der Daten' })
       .shouldLog(true)
       .statusCode(500)
       .buildEntry();
