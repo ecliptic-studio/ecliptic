@@ -7,13 +7,13 @@ export type TErrorStatus = 400 | 401 | 403 | 404 | 405 | 406 | 407 | 408 | 409 |
  * 
  * code: string; Unique identifier for the error code use dot notation to indicate the module and the function that caused the error. E.g. "SR.ON_START_CHECKS_FX.MISSING_SERVER_FILE"
  * params?: Record<string, string>; Optional parameters to be used in the error message. Text replacement look search for "my error message: {param1} {param2}"
- * external: Partial<Record<TLang, string>> & { fallback?: string }; The error message to be displayed to the user. Must be written in a way that is easy to understand and does not expose any internal implementation details.
- * internal?: Partial<Record<TLang, string>> & { fallback?: string }; The error message to be displayed to the developer. Can contain internal implementation details.
+ * external: Partial<Record<TLang, string>> & { en: string }; The error message to be displayed to the user. Must be written in a way that is easy to understand and does not expose any internal implementation details.
+ * internal?: Partial<Record<TLang, string>> & { en: string }; The error message to be displayed to the developer. Can contain internal implementation details.
  */
 export type TErrorEntry = {
   code: string;
   params?: Record<string, string>;
-  external?: Partial<Record<TLang, string>> & { en: string };
+  external: Partial<Record<TLang, string>> & { en: string };
   internal?: string;
   shouldLog?: boolean;
   statusCode: TErrorStatus;
