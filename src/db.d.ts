@@ -67,22 +67,18 @@ export interface Datastore {
   updated_at: Generated<string>;
 }
 
-export interface ExternalConnection {
+export interface ExternalMailboxOauth {
   access_token: string;
   created_at: Generated<string>;
   expires_at: string;
   id: string;
+  organization_id: string;
   refresh_token: string;
   scope: string;
   subscriptions: string;
   type: string;
   updated_at: Generated<string>;
   user_id: string;
-}
-
-export interface ExternalEmail {
-  email: string;
-  external_connection_id: string;
 }
 
 export interface Invitation {
@@ -115,6 +111,14 @@ export interface Log {
   updated_at: Generated<string>;
   user_id: string | null;
   workflow_id: string | null;
+}
+
+export interface Mailbox {
+  created_at: Generated<string>;
+  email: string;
+  external_mailbox_oauth_id: string | null;
+  todo_count: Generated<number>;
+  updated_at: Generated<string>;
 }
 
 export interface Mcpkey {
@@ -225,10 +229,10 @@ export interface DB {
   account: Account;
   apikey: Apikey;
   datastore: Datastore;
-  external_connection: ExternalConnection;
-  external_email: ExternalEmail;
+  external_mailbox_oauth: ExternalMailboxOauth;
   invitation: Invitation;
   log: Log;
+  mailbox: Mailbox;
   mcpkey: Mcpkey;
   member: Member;
   migration: Migration;

@@ -52,6 +52,16 @@ export const authMicrosoft: Serve.Handler<BunRequest<'/auth/microsoft'>, Server<
     return Response.redirect(`/mailbox?message=${encodeURIComponent('User not found')}`)
   }
 
+  const member = await kysely
+    .selectFrom('member')
+    .where('userId', '=', user.id)
+    .selectAll()
+    .executeTakeFirst()
+
+  if (!member || !member.organizationId) {
+    return Response.redirect(`/mailbox?message=${encodeURIComponent('Organization not found')}`)
+  }
+
   // Exchange code for token
   const [tokenData, tokenError] = await exchangeCodeForTokenFx({fetch}, {code})
   if (tokenError) {
@@ -59,11 +69,11 @@ export const authMicrosoft: Serve.Handler<BunRequest<'/auth/microsoft'>, Server<
   }
 
   // Create or update external connection
-  const existingExternalConnection = await kysely.selectFrom('external_connection')
-    .where('user_id', '=', user.id)
+  const existingExternalConnection = await kysely.selectFrom('external_mailbox_oauth')
+    .where('organization_id', '=', member.organizationId)
     .where('type', '=', 'microsoft')
-    .innerJoin('external_email', 'external_connection.id', 'external_email.external_connection_id')
-    .where('external_email.email', '=', decryptedState.email)
+    .innerJoin('mailbox', 'external_mailbox_oauth.id', 'mailbox.external_mailbox_oauth_id')
+    .where('mailbox.email', '=', decryptedState.email)
     .selectAll()
     .executeTakeFirst()
 
@@ -71,7 +81,7 @@ export const authMicrosoft: Serve.Handler<BunRequest<'/auth/microsoft'>, Server<
 
   if (existingExternalConnection) {
     // Update the existing external connection
-    await kysely.updateTable('external_connection')
+    await kysely.updateTable('external_mailbox_oauth')
       .set({
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
@@ -85,10 +95,11 @@ export const authMicrosoft: Serve.Handler<BunRequest<'/auth/microsoft'>, Server<
     externalConnectionId = existingExternalConnection.id;
   } else {
     // Create a new external connection
-    const newConnection = await kysely.insertInto('external_connection')
+    const newConnection = await kysely.insertInto('external_mailbox_oauth')
       .values({
         id: crypto.randomUUID(),
         user_id: user.id,
+        organization_id: member.organizationId,
         type: 'microsoft',
         access_token: tokenData.access_token,
         refresh_token: tokenData.refresh_token,
@@ -124,17 +135,17 @@ export const authMicrosoft: Serve.Handler<BunRequest<'/auth/microsoft'>, Server<
 
   // Check if email already exists in external_email table
   const existingEmail = await kysely
-    .selectFrom('external_email')
-    .where('external_connection_id', '=', externalConnectionId)
+    .selectFrom('mailbox')
+    .where('external_mailbox_oauth_id', '=', externalConnectionId)
     .where('email', '=', decryptedState.email)
     .selectAll()
     .executeTakeFirst();
 
   if (!existingEmail) {
     // Add new email to external_email table
-    await kysely.insertInto('external_email')
+    await kysely.insertInto('mailbox')
       .values({
-        external_connection_id: externalConnectionId,
+        external_mailbox_oauth_id: externalConnectionId,
         email: decryptedState.email,
       })
       .execute();
