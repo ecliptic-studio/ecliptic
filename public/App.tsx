@@ -7,6 +7,7 @@ import DatastorePage from "@public/pages/DatastorePage";
 import DatastoreTablePage from "@public/pages/DatastoreTablePage";
 import Home from "@public/pages/Home";
 import MailboxPage from "@public/pages/MailboxPage";
+import MailboxDetailPage from "@public/pages/MailboxDetailPage";
 import McpApiKeyEditorPage from "@public/pages/McpApiKeyEditorPage";
 import McpSettingsPage from "@public/pages/McpSettingsPage";
 import SigninPage from "@public/pages/SigninPage";
@@ -34,6 +35,7 @@ export function App() {
                   <Route path="/datastore" element={<DatastorePage />} />
                   <Route path="/datastore/:id/table/:tableName" element={<DatastoreTablePage />} />
                   <Route path="/mailbox" element={<MailboxPage />} />
+                  <Route path="/mailbox/:email" element={<MailboxDetailPage />} />
                   <Route path="/mcp-settings" element={<McpSettingsPage />} />
                   <Route path="/mcp-settings/new-api" element={<McpApiKeyEditorPage />} />
                   <Route path="/mcp-settings/edit/:keyId" element={<McpApiKeyEditorPage />} />
