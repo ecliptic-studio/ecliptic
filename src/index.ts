@@ -11,7 +11,7 @@ import { authMicrosoft } from './api/auth.microsoft'
 import { auth } from './auth'
 import { Client } from "@microsoft/microsoft-graph-client";
 import type { User, MailFolder, PublicErrorDetail } from "@microsoft/microsoft-graph-types";
-import { resolveSession } from './mw/mw.auth-guard'
+import { resolveSession } from './mw/mw.auth'
 import { kysely } from './db'
 
 import { createGraphServiceClient, GraphRequestAdapter } from "@microsoft/msgraph-sdk";

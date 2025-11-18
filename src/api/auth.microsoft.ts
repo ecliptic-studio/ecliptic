@@ -1,12 +1,9 @@
+import { createGraphServiceClient, GraphRequestAdapter } from "@microsoft/msgraph-sdk";
 import { kysely } from "@server/db";
-import { ErrorCode } from "@server/error/error-code.enum";
-import { createError } from "@server/error/t-error";
-import { toErrorResponse } from "@server/server-helper";
 import { decryptFn } from "@server/subroutines/encryption.fn";
 import { checkMailboxAccessFx } from "@server/subroutines/microsoft/check-mailbox-access.fx";
 import { exchangeCodeForTokenFx } from "@server/subroutines/microsoft/oauth.fx";
 import type { BunRequest, Serve, Server } from "bun";
-import { createGraphServiceClient, GraphRequestAdapter } from "@microsoft/msgraph-sdk";
 
 type TDecryptedState = {
   userId: string;
@@ -14,6 +11,10 @@ type TDecryptedState = {
   timestamp: number;
 };
 
+/**
+ * Handler for the Microsoft OAuth callback.
+ * Public endpoint that is used to authenticate with Microsoft.
+ */
 export const authMicrosoft: Serve.Handler<BunRequest<'/auth/microsoft'>, Server<undefined>, Response> = async (req, server) => {
 
   const requestUrl = new URL(req.url)

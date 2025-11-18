@@ -4,7 +4,11 @@ import { insertTableRowsController } from '@server/controllers/ctrl.datastore.ro
 import { updateTableRowsController } from '@server/controllers/ctrl.datastore.rows-update';
 import { getTableDataController } from '@server/controllers/ctrl.datastore.table-get';
 import { kysely } from '@server/db';
+import { resolveAuth } from '@server/mw/mw.auth';
+import { resolveLang } from '@server/mw/mw.lang';
+import { toErrorResponse } from '@server/server-helper';
 import { parseQueryFn } from '@server/subroutines/datastore/query-parser.fn';
+import { type BunRequest, type Serve, type Server } from "bun";
 
 
 /**
@@ -27,17 +31,11 @@ function buildContentRangeHeader(start: number | null, end: number, total?: numb
   return `${start}-${end}/*`;
 }
 
-// Controller handles HTTP related eg. routing, request validation
-import { resolveLang } from '@server/mw/mw.lang';
-import { toErrorResponse } from '@server/server-helper';
-import { type BunRequest, type Serve, type Server } from "bun";
-import { resolveSession } from '../mw/mw.auth-guard';
-
 export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/api/v1/datastore/:id/table/:tableName'>, Server<undefined>, Response>>> = {
   GET: async (req, server) => {
-    const session = await resolveSession(req.headers)
+    const auth = await resolveAuth(req.headers)
     const lang = resolveLang(req.headers)
-    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!auth) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const query = new URLSearchParams(req.url.split('?')[1])
 
     // Convert URLSearchParams to Record<string, string | string[]>
@@ -65,7 +63,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
 
     // Call controller
     const [result, error] = await getTableDataController(
-      { session: session.session, db: kysely },
+      { session: auth.session, db: kysely },
       {
         datastoreId: req.params.id,
         tableName: req.params.tableName,
@@ -77,7 +75,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
       }
     );
 
-    if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error })
+    if (error) return toErrorResponse({req, auth, lang, error })
 
     const response = new Response(JSON.stringify(result), {
       headers: {
@@ -89,15 +87,15 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
   },
 
   POST: async (req, server) => {
-    const session = await resolveSession(req.headers)
+    const auth = await resolveAuth(req.headers)
     const lang = resolveLang(req.headers)
-    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!auth) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json();
     const isArray = Array.isArray(body);
 
     const [result, error] = await insertTableRowsController(
-      { session: session.session, db: kysely },
+      { session: auth.session, db: kysely },
       {
         datastoreId: req.params.id,
         tableName: req.params.tableName,
@@ -106,7 +104,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
       }
     );
 
-    if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error })
+    if (error) return toErrorResponse({req, auth, lang, error })
 
     const response = new Response(JSON.stringify(result), {
       headers: {
@@ -118,9 +116,9 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
   },
 
   PATCH: async (req, server) => {
-    const session = await resolveSession(req.headers)
+    const auth = await resolveAuth(req.headers)
     const lang = resolveLang(req.headers)
-    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!auth) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
     const query = new URLSearchParams(req.url.split('?')[1])
 
@@ -143,7 +141,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
     const body = await req.json();
 
     const [result, error] = await updateTableRowsController(
-      { session: session.session, db: kysely },
+      { session: auth.session, db: kysely },
       {
         datastoreId: req.params.id,
         tableName: req.params.tableName,
@@ -152,7 +150,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
       }
     );
 
-    if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error })
+    if (error) return toErrorResponse({req, auth, lang, error })
 
     const count = result.updated;
     const contentRange = count > 0
@@ -169,9 +167,9 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
   },
 
   DELETE: async (req, server) => {
-    const session = await resolveSession(req.headers)
+    const auth = await resolveAuth(req.headers)
     const lang = resolveLang(req.headers)
-    if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!auth) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
     const body = await req.json();
 
@@ -181,7 +179,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
     }
 
     const [result, error] = await deleteTableRowsController(
-      { session: session.session, db: kysely },
+      { session: auth.session, db: kysely },
       {
         datastoreId: req.params.id,
         tableName: req.params.tableName,
@@ -189,7 +187,7 @@ export const apiDatastoreIdTableName: Partial<Record<Serve.HTTPMethod, Serve.Han
       }
     );
 
-    if (error) return toErrorResponse({req, user: session.user, session: session.session, lang, error })
+    if (error) return toErrorResponse({req, auth, lang, error })
 
     const count = result.deleted;
     const contentRange = count > 0

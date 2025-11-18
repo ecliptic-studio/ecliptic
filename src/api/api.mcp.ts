@@ -17,7 +17,10 @@ import { createMcpServerFn } from '@server/subroutines/mcp/create-mcp-server.fn'
 import type { BunRequest, Serve, Server } from 'bun';
 import { toFetchResponse, toReqRes } from 'fetch-to-node';
 
-
+/**
+ * Handler for the MCP server itself. This connects to the MCP client and handles the requests.
+ * It is not protected by the auth middleware because it's auth is not handled by better-auth.
+ */
 export const apiMcp: Partial<Record<Serve.HTTPMethod, Serve.Handler<BunRequest<'/mcp'>, Server<undefined>, Response>>> = {
   POST: async (request, server) => {
     const key = new URLSearchParams(request.url.split('?')[1]).get('key') ?? (request.headers.get('authorization')?.split(' ')[1] ?? null)

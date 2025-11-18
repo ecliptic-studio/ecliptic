@@ -1,8 +1,9 @@
+import type { TAuth } from "@server/dto/TAuth"
 import type { TSession } from "@server/dto/TSession"
 import type { TUser } from "@server/dto/TUser"
 import { auth } from "../auth"
 
-export const resolveSession = async (headers: Headers) => {
+export const resolveAuth = async (headers: Headers): Promise<TAuth | null> => {
   let session = await auth.api.getSession({
     headers
   })
