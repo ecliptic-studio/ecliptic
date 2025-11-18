@@ -223,7 +223,7 @@ export function AppSidebarProvider() {
               <SidebarMenu>
                 {mailboxes.map((mailbox) => (
                   <SidebarMenuItem key={mailbox.email}>
-                    <SidebarMenuButton className="pl-2">
+                    <SidebarMenuButton className="pl-2" onClick={() => navigate(`/mailbox/${mailbox.email}`)}>
                       <Mail className="size-4" />
                       <span>{mailbox.email}</span>
                     </SidebarMenuButton>
