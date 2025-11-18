@@ -3,34 +3,19 @@ import { apiData } from './api/api.data'
 import { apiDatastoreId } from './api/api.datastore.:id'
 import { apiDatastoreIdSchema } from './api/api.datastore.:id.schema'
 import { apiDatastoreIdTableName } from './api/api.datastore.:id.table.:tableName'
+import { apiMailbox } from './api/api.mailbox'
 import { apiMcp } from './api/api.mcp'
 import { apiMcpKeys } from './api/api.mcp-keys'
 import { apiMcpKeysId } from './api/api.mcp-keys.:id'
 import { apiPermission } from './api/api.permission'
 import { authMicrosoft } from './api/auth.microsoft'
 import { auth } from './auth'
-import { Client } from "@microsoft/microsoft-graph-client";
-import type { User, MailFolder, PublicErrorDetail } from "@microsoft/microsoft-graph-types";
-import { resolveAuth } from './mw/mw.auth'
-import { kysely } from './db'
-
-import { createGraphServiceClient, GraphRequestAdapter } from "@microsoft/msgraph-sdk";
-import "@microsoft/msgraph-sdk-users";
-import { refreshTokenFx } from './subroutines/microsoft/oauth.fx'
-import { toErrorResponse } from './server-helper'
 
 
 const server = Bun.serve({
 	routes: {
 		// api routes
-		'/api/v1/auth/*': {
-			async GET(req) {
-				return auth.handler(req);
-			},
-			async POST(req) {
-				return auth.handler(req);
-			},
-		},
+		'/api/v1/auth/*': auth.handler,
 		"/api/v1/data": apiData,
 		"/api/v1/datastore/:id": apiDatastoreId,
 		"/api/v1/datastore/:id/table/:tableName": apiDatastoreIdTableName,
@@ -38,6 +23,7 @@ const server = Bun.serve({
 		"/api/v1/mcp-keys": apiMcpKeys,
 		"/api/v1/mcp-keys/:id": apiMcpKeysId,
 		"/api/v1/permission/targets-and-actions": apiPermission,
+		"/api/v1/mailbox": apiMailbox,
 		"/mcp": apiMcp,
 		"/auth/microsoft": authMicrosoft,
 		// Static routes

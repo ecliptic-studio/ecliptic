@@ -1,6 +1,7 @@
 import { type TDatastore } from "@dto/TDatastore";
 import { apiTypes } from '@server/api/api-types';
 import type { TDataResponse } from '@server/controllers/ctrl.data.get';
+import type { TMailboxListResponse } from '@server/controllers/ctrl.mailbox.list';
 import type { TMcpKey } from "@server/dto/TMcp";
 import type { TPermissionMeta } from "@server/dto/TPermissionMeta";
 import type { TTableData } from '@server/dto/TTableData';
@@ -301,6 +302,18 @@ const apis = {
      */
     GET: async () => {
       return apiFetch<TPermissionMeta>(`${API_BASE}/api/v1/permission/targets-and-actions`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+    }
+  },
+
+  '/api/v1/mailbox': {
+    /**
+     * Get all mailboxes for the current user's active organization
+     */
+    GET: async () => {
+      return apiFetch<TMailboxListResponse>(`${API_BASE}/api/v1/mailbox`, {
         method: 'GET',
         credentials: 'include',
       });

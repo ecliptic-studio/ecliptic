@@ -1,3 +1,4 @@
+import apis from "@public/api-calls";
 import { Button } from "@public/components/ui/button";
 import {
   Dialog,
@@ -16,10 +17,13 @@ import {
 } from "@public/components/ui/dropdown-menu";
 import { Input } from "@public/components/ui/input";
 import { betterAuthClient } from "@public/lib/auth-client";
+import { encryptFnBrowser } from "@public/lib/encryption-browser";
+import { globalStore } from "@public/store/store.global";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { useStore } from "zustand";
 
 type Provider = "outlook" | "gmail";
 
@@ -36,41 +40,7 @@ async function createEncryptedState(userId: string, email: string): Promise<stri
   // Generate random IV (12 bytes for GCM)
   const iv = crypto.getRandomValues(new Uint8Array(12));
 
-  // Ensure key is 32 bytes
-  const keyBuffer = new TextEncoder().encode(key.padEnd(32, '0').slice(0, 32));
-
-  // Import key for Web Crypto API
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    keyBuffer,
-    { name: 'AES-GCM' },
-    false,
-    ['encrypt']
-  );
-
-  // Encrypt the data
-  const jsonData = JSON.stringify(payload);
-  const dataBuffer = new TextEncoder().encode(jsonData);
-
-  const encryptedBuffer = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv, tagLength: 128 }, // 128-bit auth tag (16 bytes)
-    cryptoKey,
-    dataBuffer
-  );
-
-  // In Web Crypto API's AES-GCM, the auth tag is appended to the ciphertext
-  // Split them: last 16 bytes are auth tag, rest is ciphertext
-  const encryptedArray = new Uint8Array(encryptedBuffer);
-  const authTagLength = 16;
-  const ciphertext = encryptedArray.slice(0, encryptedArray.length - authTagLength);
-  const authTag = encryptedArray.slice(encryptedArray.length - authTagLength);
-
-  // Convert to base64 and combine iv:authTag:encrypted (matching encryption.fn.ts format)
-  const ivBase64 = btoa(String.fromCharCode(...iv));
-  const authTagBase64 = btoa(String.fromCharCode(...authTag));
-  const encryptedBase64 = btoa(String.fromCharCode(...ciphertext));
-
-  return `${ivBase64}:${authTagBase64}:${encryptedBase64}`;
+  return encryptFnBrowser({data: payload, key, iv});
 }
 
 function getMicrosoftAuthorizeUrl(encryptedState: string) {
@@ -98,12 +68,25 @@ function getMicrosoftAuthorizeUrl(encryptedState: string) {
 export function MailboxPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const a = useStore(globalStore)
   const [formData, setFormData] = useState({
     inboxAddress: "",
     provider: "outlook" as Provider,
   });
   const [loading, setLoading] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
+
+  useEffect(() => {
+    const loadMailboxes = async () => {
+      const [mailboxes, error] = await apis["/api/v1/mailbox"].GET();
+      if (error !== null) {
+        toast.error(error);
+      } else {
+        globalStore.setState({ mailboxes: mailboxes.mailboxes })
+      }
+    };
+    loadMailboxes();
+  }, []);
 
   // Check for message in URL params and display it
   useEffect(() => {
@@ -171,6 +154,7 @@ export function MailboxPage() {
       // Redirect to Microsoft OAuth
       window.location.href = authUrl;
     } catch (err) {
+      console.error(err);
       toast.error("An unexpected error occurred", {
         description: "Please try again.",
       });
