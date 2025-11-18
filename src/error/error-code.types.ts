@@ -13,7 +13,7 @@ export type TErrorStatus = 400 | 401 | 403 | 404 | 405 | 406 | 407 | 408 | 409 |
 export type TErrorEntry = {
   code: string;
   params?: Record<string, string>;
-  external?: Partial<Record<TLang, string>> & { fallback?: string };
+  external?: Partial<Record<TLang, string>> & { en: string };
   internal?: string;
   shouldLog?: boolean;
   statusCode: TErrorStatus;

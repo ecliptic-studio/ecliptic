@@ -4,7 +4,7 @@ import type { TErrorStatus, TErrorEntry, TErrTuple } from "./error-code.types";
 export class TErrorBuilder {
   private errorEntry: Partial<TErrorEntry> = {};
 
-  constructor(code?: string, external?: Partial<Record<TLang, string>> & { fallback?: string }) {
+  constructor(code?: string, external?: Partial<Record<TLang, string>> & { en: string }) {
     if (code) this.errorEntry.code = code ?? 'UNKNOWN_ERROR';
     if (external) this.errorEntry.external = external ?? defaultErrorMap;
   }
@@ -24,7 +24,7 @@ export class TErrorBuilder {
     return this;
   }
 
-  external(external: Partial<Record<TLang, string>> & { fallback?: string }): TErrorBuilder {
+  external(external: Partial<Record<TLang, string>> & { en: string }): TErrorBuilder {
     this.errorEntry.external = external;
     return this;
   }
@@ -118,7 +118,7 @@ export class TErrorBuilder {
   }
 }
 
-export function createError(code?: string, external?: Partial<Record<TLang, string>> & { fallback?: string }): TErrorBuilder {
+export function createError(code?: string, external?: Partial<Record<TLang, string>> & { en: string }): TErrorBuilder {
   return new TErrorBuilder(code, external);
 }
 
