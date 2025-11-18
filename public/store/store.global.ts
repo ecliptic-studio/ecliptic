@@ -1,7 +1,7 @@
+import type { TDatastore } from '@dto/TDatastore';
+import type { TMailbox } from '@server/dto/TMailbox';
 import { createStore } from 'zustand';
 import createInitialLoadingAction from './actions/action.inital-loading';
-import type { TDatastore } from '@dto/TDatastore';
-import { betterAuthClient } from "@public/lib/auth-client";
 
 type TError = {
   code: string
@@ -11,12 +11,14 @@ type TError = {
 export type TGlobalStore = {
   // no sliced yet
   datastores: TDatastore[]
+  mailboxes: TMailbox[]
   initialLoading: () => Promise<void>
 }
 
 export const globalStore = createStore<TGlobalStore>((set, get) => {
   const store = {
     datastores: [],
+    mailboxes: [],
     // Actions
     initialLoading: createInitialLoadingAction(set),
   }

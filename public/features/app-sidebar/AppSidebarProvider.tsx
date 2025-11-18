@@ -47,6 +47,7 @@ export function AppSidebarProvider() {
   const navigate = useNavigate();
   const location = useLocation();
   const datastores = useStore(globalStore, (state) => state.datastores);
+  const mailboxes = useStore(globalStore, (state) => state.mailboxes);
   const { openDialog } = useDatastoreDialogs();
   const [openDatastores, setOpenDatastores] = useState<Record<string, boolean>>({});
 
@@ -220,24 +221,14 @@ export function AppSidebarProvider() {
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton className="pl-2">
-                    <Mail className="size-4" />
-                    <span>work@example.com</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton className="pl-2">
-                    <Mail className="size-4" />
-                    <span>personal@gmail.com</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton className="pl-2">
-                    <Mail className="size-4" />
-                    <span>support@company.com</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+                {mailboxes.map((mailbox) => (
+                  <SidebarMenuItem key={mailbox.email}>
+                    <SidebarMenuButton className="pl-2">
+                      <Mail className="size-4" />
+                      <span>{mailbox.email}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

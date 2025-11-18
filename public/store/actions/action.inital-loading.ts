@@ -17,6 +17,7 @@ export default function (set: ZustandSetter) {
     } else {
       set(produce((state: TGlobalStore) => { 
         state.datastores = data.datastores
+        state.mailboxes = data.mailboxes
        }))
     }
   }
