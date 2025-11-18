@@ -2,6 +2,7 @@ import type { GraphServiceClient } from "@microsoft/msgraph-sdk";
 import { ErrorCode } from "@server/error/error-code.enum";
 import type { TErrTuple } from "@server/error/error-code.types";
 import { createError } from "@server/error/t-error";
+import "@microsoft/msgraph-sdk-users";
 
 type TMailboxCheckResult = {
   email: string;
