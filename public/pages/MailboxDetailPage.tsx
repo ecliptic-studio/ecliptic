@@ -25,6 +25,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useStore } from "zustand";
+import api from "@public/api-calls";
 
 type EmailTag = {
   id: string;
@@ -261,6 +262,17 @@ export function MailboxDetailPage() {
   if (!mailbox) {
     return null; // Will redirect via useEffect
   }
+
+  useEffect(() => {
+    const loadEmails = async () => {
+      const [result, error] = await api["/api/v1/mailbox/:email"].GET({ email: email! });
+      if (error) {
+        toast.error("Failed to load emails");
+      }
+      console.log(result);
+    };
+    loadEmails();
+  }, [email]);
 
   return (
     <>

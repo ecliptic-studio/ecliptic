@@ -4,6 +4,7 @@ import { apiDatastoreId } from './api/api.datastore.:id'
 import { apiDatastoreIdSchema } from './api/api.datastore.:id.schema'
 import { apiDatastoreIdTableName } from './api/api.datastore.:id.table.:tableName'
 import { apiMailbox } from './api/api.mailbox'
+import { apiMailboxEmail } from './api/api.mailbox.:email'
 import { apiMcp } from './api/api.mcp'
 import { apiMcpKeys } from './api/api.mcp-keys'
 import { apiMcpKeysId } from './api/api.mcp-keys.:id'
@@ -24,6 +25,7 @@ const server = Bun.serve({
 		"/api/v1/mcp-keys/:id": apiMcpKeysId,
 		"/api/v1/permission/targets-and-actions": apiPermission,
 		"/api/v1/mailbox": apiMailbox,
+		"/api/v1/mailbox/:email": apiMailboxEmail,
 		"/mcp": apiMcp,
 		"/auth/microsoft": authMicrosoft,
 		// Static routes
