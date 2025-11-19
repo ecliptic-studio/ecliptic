@@ -11,11 +11,13 @@ export const apiMailboxEmail: Partial<Record<Serve.HTTPMethod, Serve.Handler<Bun
 		const auth = await resolveAuth(req.headers)
 		const lang = resolveLang(req.headers)
 		if (!auth) return Response.json({error: 'Unauthorized'}, {status: 401})
-
+		const url = new URLSearchParams(req.url.split('?')[1])
+		const limit = url.get('limit') ? Number(url.get('limit')) : 50;
+		const offset = url.get('offset') ? Number(url.get('offset')) : 0;
 		const [result, error] = await listMailboxEmailsController({
 			session: auth.session,	
 			db: kysely
-		}, { mailboxEmail: req.params.email })
+		}, { mailboxEmail: req.params.email, limit, offset })
 
 		if (error)
 			return toErrorResponse({req, auth, lang, error})

@@ -2,7 +2,7 @@ import { type TDatastore } from "@dto/TDatastore";
 import { apiTypes } from '@server/api/api-types';
 import type { TDataResponse } from '@server/controllers/ctrl.data.get';
 import type { TMailboxListResponse } from '@server/controllers/ctrl.mailbox.list';
-import type { TMailboxEmailListResponse } from "@server/controllers/ctrl.mailbox.list.emails";
+import type { TListMailboxEmailsResult } from "@server/controllers/ctrl.mailbox.list.emails";
 import type { TMcpKey } from "@server/dto/TMcp";
 import type { TPermissionMeta } from "@server/dto/TPermissionMeta";
 import type { TTableData } from '@server/dto/TTableData';
@@ -323,10 +323,22 @@ const apis = {
 
   '/api/v1/mailbox/:email': {
     /**
-     * Get all emails for a mailbox
+     * Get all emails for a mailbox with pagination
      */
-    GET: async (params: { email: string }) => {
-      return apiFetch<TMailboxEmailListResponse>(`${API_BASE}/api/v1/mailbox/${params.email}`, {
+    GET: async (params: { email: string }, query?: { limit?: number; offset?: number }) => {
+      const searchParams = new URLSearchParams();
+
+      if (query?.limit !== undefined) {
+        searchParams.append('limit', String(query.limit));
+      }
+      if (query?.offset !== undefined) {
+        searchParams.append('offset', String(query.offset));
+      }
+
+      const queryString = searchParams.toString();
+      const url = `${API_BASE}/api/v1/mailbox/${params.email}${queryString ? `?${queryString}` : ''}`;
+
+      return apiFetch<TListMailboxEmailsResult>(url, {
         method: 'GET',
         credentials: 'include',
       });

@@ -1,16 +1,7 @@
+import api from "@public/api-calls";
+import { Badge } from "@public/components/ui/badge";
 import { Button } from "@public/components/ui/button";
 import { Card } from "@public/components/ui/card";
-import { Input } from "@public/components/ui/input";
-import { Label } from "@public/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@public/components/ui/table";
-import { Badge } from "@public/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -18,14 +9,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@public/components/ui/dialog";
-import { globalStore } from "@public/store/store.global";
+import { Input } from "@public/components/ui/input";
+import { Label } from "@public/components/ui/label";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipPositioner,
+  TooltipTrigger,
+} from "@public/components/ui/tooltip";
 import { useHeader } from "@public/contexts/HeaderContext";
-import { Settings, Plus, X, ChevronRight } from "lucide-react";
+import { globalStore } from "@public/store/store.global";
+import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useStore } from "zustand";
-import api from "@public/api-calls";
 
 type EmailTag = {
   id: string;
@@ -42,90 +40,76 @@ type TableMapping = {
 
 type EmailStatus = "PENDING" | "TODO" | "DONE" | "DISCARDED";
 
-type MockEmail = {
+type TMailboxEmailRecipient = {
+  name?: string;
+  email: string;
+};
+
+type EmailWithMockData = {
   id: string;
   status: EmailStatus;
   tags: string[];
-  title: string;
-  date: string;
-  from: string;
+  subject: string;
+  createdDateTime: string | null;
+  from: TMailboxEmailRecipient | null;
+  toRecipients: TMailboxEmailRecipient[];
+  ccRecipients: TMailboxEmailRecipient[];
+  bccRecipients: TMailboxEmailRecipient[];
+  body: { contentType: "text" | "html"; content: string } | null;
+  hasAttachments: boolean;
 };
 
-// Mock email data
-const MOCK_EMAILS: MockEmail[] = [
-  {
-    id: "1",
-    status: "PENDING",
-    tags: ["sales", "inquiry"],
-    title: "Question about pricing",
-    date: "2025-01-18 10:30",
-    from: "customer@example.com",
-  },
-  {
-    id: "2",
-    status: "TODO",
-    tags: ["billing", "urgent"],
-    title: "Invoice #12345",
-    date: "2025-01-18 09:15",
-    from: "support@vendor.com",
-  },
-  {
-    id: "3",
-    status: "DISCARDED",
-    tags: ["spam", "marketing"],
-    title: "Limited time offer!",
-    date: "2025-01-17 20:00",
-    from: "promo@ads.com",
-  },
-  {
-    id: "4",
-    status: "DISCARDED",
-    tags: ["spam"],
-    title: "You won a prize",
-    date: "2025-01-17 18:30",
-    from: "lottery@fake.com",
-  },
-  {
-    id: "5",
-    status: "DONE",
-    tags: ["support"],
-    title: "Re: Bug report #543",
-    date: "2025-01-17 16:45",
-    from: "dev@company.com",
-  },
-  {
-    id: "6",
-    status: "TODO",
-    tags: ["sales", "partnership"],
-    title: "Partnership opportunity",
-    date: "2025-01-17 15:20",
-    from: "lead@startup.io",
-  },
-  {
-    id: "7",
-    status: "DONE",
-    tags: ["internal"],
-    title: "Meeting notes",
-    date: "2025-01-17 14:00",
-    from: "team@example.com",
-  },
-  {
-    id: "8",
-    status: "DONE",
-    tags: ["billing", "invoice"],
-    title: "Payment confirmation",
-    date: "2025-01-17 11:30",
-    from: "accounts@vendor.com",
-  },
-  {
-    id: "9",
-    status: "DISCARDED",
-    tags: ["spam", "phishing"],
-    title: "Verify your account now!",
-    date: "2025-01-16 22:15",
-    from: "security@fake-bank.com",
-  },
-];
+// Mock status generator - cycles through statuses for demo
+const mockStatus = (index: number): EmailStatus => {
+  const statuses: EmailStatus[] = ["PENDING", "TODO", "DONE", "DISCARDED"];
+  return statuses[index % statuses.length]!;
+};
+
+// Mock tags generator - assigns random tags for demo
+const mockTags = (index: number): string[] => {
+  const allTags = [
+    ["sales", "inquiry"],
+    ["billing", "urgent"],
+    ["spam", "marketing"],
+    ["spam"],
+    ["support"],
+    ["sales", "partnership"],
+    ["internal"],
+    ["billing", "invoice"],
+  ];
+  return allTags[index % allTags.length] || [];
+};
+
+// Helper to format recipient display (name only, with email as fallback)
+const formatRecipientName = (recipient: TMailboxEmailRecipient | null): string => {
+  if (!recipient) return "-";
+  return recipient.name || recipient.email;
+};
+
+// Helper to format full recipient (for tooltip)
+const formatRecipientFull = (recipient: TMailboxEmailRecipient | null): string => {
+  if (!recipient) return "-";
+  return recipient.name ? `${recipient.name} <${recipient.email}>` : recipient.email;
+};
+
+// Helper to format date and time separately
+const formatDateTime = (dateString: string | null): { date: string; time: string } => {
+  if (!dateString) return { date: "-", time: "" };
+
+  const date = new Date(dateString);
+  const dateFormatted = date.toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  });
+  const timeFormatted = date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  return { date: dateFormatted, time: timeFormatted };
+};
 
 export function MailboxDetailPage() {
   const { email } = useParams<{ email: string }>();
@@ -137,6 +121,24 @@ export function MailboxDetailPage() {
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [tags, setTags] = useState<EmailTag[]>([]);
   const [tableMappings, setTableMappings] = useState<TableMapping[]>([]);
+  const [emails, setEmails] = useState<EmailWithMockData[]>([]);
+  const [pagination, setPagination] = useState({ limit: 50, offset: 0, total: 0 });
+  const [isLoadingEmails, setIsLoadingEmails] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const totalPages = Math.ceil(pagination.total / pagination.limit);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   // Form states for adding new items
   const [newTagName, setNewTagName] = useState("");
@@ -158,7 +160,7 @@ export function MailboxDetailPage() {
   useEffect(() => {
     if (mailbox) {
       setHeaderContent({
-        title: `INCOMING EMAILS ${email}`,
+        title: `${email}`,
         subtitle: `${mailbox.todoCount} emails pending`,
         actions: (
           <Button variant="outline" onClick={() => setShowSettingsDialog(true)}>
@@ -263,64 +265,180 @@ export function MailboxDetailPage() {
     return null; // Will redirect via useEffect
   }
 
+  // Load emails when page changes
   useEffect(() => {
     const loadEmails = async () => {
-      const [result, error] = await api["/api/v1/mailbox/:email"].GET({ email: email! });
+      if (!email) return;
+
+      setIsLoadingEmails(true);
+      const offset = (currentPage - 1) * 50;
+      const [result, error] = await api["/api/v1/mailbox/:email"].GET(
+        { email },
+        { limit: 50, offset }
+      );
+
       if (error) {
         toast.error("Failed to load emails");
+        setIsLoadingEmails(false);
+        return;
       }
-      console.log(result);
+
+      if (result) {
+        // Transform API emails to include mock status and tags
+        const emailsWithMockData: EmailWithMockData[] = result.emails.map((apiEmail, index) => ({
+          id: apiEmail.id,
+          status: mockStatus(index),
+          tags: mockTags(index),
+          subject: apiEmail.subject,
+          createdDateTime: apiEmail.createdDateTime,
+          from: apiEmail.from,
+          toRecipients: apiEmail.toRecipients,
+          ccRecipients: apiEmail.ccRecipients,
+          bccRecipients: apiEmail.bccRecipients,
+          body: apiEmail.body,
+          hasAttachments: apiEmail.hasAttachments,
+        }));
+
+        setEmails(emailsWithMockData);
+        setPagination(result.pagination);
+      }
+
+      setIsLoadingEmails(false);
     };
+
     loadEmails();
-  }, [email]);
+  }, [email, currentPage]);
 
   return (
     <>
-      <div className="p-8">
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-32">Status</TableHead>
-                <TableHead>Tags</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead className="w-40">Date</TableHead>
-                <TableHead className="w-48">From</TableHead>
-                <TableHead className="w-32">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {MOCK_EMAILS.map((email) => (
-                <TableRow key={email.id}>
-                  <TableCell>
-                    <Badge
-                      className={`${getStatusBadgeStyle(email.status)} rounded-sm text-sm font-semibold px-3 py-1`}
-                    >
-                      {email.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 flex-wrap">
-                      {email.tags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">{email.title}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{email.date}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">{email.from}</TableCell>
-                  <TableCell>
-                    <Button variant="outline" size="sm">
-                      OPEN <ChevronRight className="size-4 ml-1" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+      <div className="flex flex-col h-[calc(100vh-80px)]">
+        {/* Table wrapper with scroll */}
+        <div className="flex-1 overflow-auto">
+          <div className="w-full">
+            <table className="w-full caption-bottom text-sm table-fixed">
+              <thead className="[&_tr]:border-b sticky top-0 bg-background z-10">
+                <tr className="border-b transition-colors">
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium w-[120px]">Status</th>
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium w-[180px]">Tags</th>
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium w-[350px]">Subject</th>
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium w-[100px]">Date</th>
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium w-[200px]">From</th>
+                  <th className="text-foreground h-10 px-2 text-left align-middle font-medium w-[100px]">Action</th>
+                </tr>
+              </thead>
+              <tbody className="[&_tr:last-child]:border-0">
+                {isLoadingEmails ? (
+                  <tr className="hover:bg-muted/50 border-b transition-colors">
+                    <td colSpan={6} className="p-2 align-middle text-center py-8 text-muted-foreground">
+                      Loading emails...
+                    </td>
+                  </tr>
+                ) : emails.length === 0 ? (
+                  <tr className="hover:bg-muted/50 border-b transition-colors">
+                    <td colSpan={6} className="p-2 align-middle text-center py-8 text-muted-foreground">
+                      No emails found
+                    </td>
+                  </tr>
+                ) : (
+                  emails.map((emailItem) => {
+                    const { date, time } = formatDateTime(emailItem.createdDateTime);
+                    return (
+                      <tr key={emailItem.id} className="hover:bg-muted/50 border-b transition-colors h-[72px]">
+                        <td className="p-2 align-middle">
+                          <Badge
+                            className={`${getStatusBadgeStyle(emailItem.status)} rounded-sm text-sm font-semibold px-3 py-1`}
+                          >
+                            {emailItem.status}
+                          </Badge>
+                        </td>
+                        <td className="p-2 align-middle">
+                          <div className="flex gap-1 flex-wrap">
+                            {emailItem.tags.map((tag) => (
+                              <Badge key={tag} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="p-2 align-middle">
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <div className="font-medium line-clamp-2 cursor-default break-words overflow-hidden text-left">
+                                {emailItem.subject}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipPositioner>
+                              <TooltipContent className="max-w-md">
+                                {emailItem.subject}
+                              </TooltipContent>
+                            </TooltipPositioner>
+                          </Tooltip>
+                        </td>
+                        <td className="p-2 align-middle text-muted-foreground text-sm">
+                          <div className="flex flex-col leading-tight">
+                            <span className="whitespace-nowrap">{date}</span>
+                            <span className="text-xs whitespace-nowrap">{time}</span>
+                          </div>
+                        </td>
+                        <td className="p-2 align-middle text-muted-foreground text-sm">
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <div className="truncate cursor-default overflow-hidden">
+                                {formatRecipientName(emailItem.from)}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipPositioner>
+                              <TooltipContent>
+                                {formatRecipientFull(emailItem.from)}
+                              </TooltipContent>
+                            </TooltipPositioner>
+                          </Tooltip>
+                        </td>
+                        <td className="p-2 align-middle">
+                          <Button variant="outline" size="sm">
+                            OPEN <ChevronRight className="size-4 ml-1" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Fixed Pagination */}
+        {!isLoadingEmails && emails.length > 0 && (
+          <div className="flex items-center justify-between px-8 py-4 border-t bg-background">
+            <div className="text-sm text-muted-foreground">
+              Showing {pagination.offset + 1} to {pagination.offset + emails.length} of {pagination.total} emails
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePreviousPage}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="size-4 mr-1" />
+                Previous
+              </Button>
+              <div className="text-sm font-medium">
+                Page {currentPage} of {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+              >
+                Next
+                <ChevronRight className="size-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Settings Dialog */}

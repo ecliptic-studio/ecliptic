@@ -3,10 +3,10 @@ CREATE TABLE IF NOT EXISTS mailbox_email (
     external_id TEXT UNIQUE, -- expect that external mail provider will provide a unique id for each email
     mailbox_email TEXT NOT NULL REFERENCES mailbox(email) ON DELETE CASCADE,
 
-    bcc_recipients TEXT NOT NULL DEFAULT '[]', -- {name: string, value: string}[]
-    cc_recipients TEXT NOT NULL DEFAULT '[]', -- {name: string, value: string}[]
-    to_recipients TEXT NOT NULL DEFAULT '[]', -- {name: string, value: string}[]
-    "from" TEXT, -- {name: string, value: string}
+    bcc_recipients TEXT NOT NULL DEFAULT '[]', -- {name: string, email: string}[]
+    cc_recipients TEXT NOT NULL DEFAULT '[]', -- {name: string, email: string}[]
+    to_recipients TEXT NOT NULL DEFAULT '[]', -- {name: string, email: string}[]
+    "from" TEXT, -- {name: string, email: string}
     conversation_id TEXT,
     conversation_index TEXT,
     has_attachments BOOLEAN NOT NULL DEFAULT FALSE,
