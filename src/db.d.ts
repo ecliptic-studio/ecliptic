@@ -91,6 +91,22 @@ export interface Invitation {
   status: string;
 }
 
+export interface Job {
+  attempts: Generated<number>;
+  completed_at: string | null;
+  created_at: Generated<string>;
+  error_message: string | null;
+  id: Generated<number | null>;
+  locked_at: string | null;
+  locked_by: string | null;
+  max_attempts: Generated<number>;
+  payload: string;
+  runs_after: Generated<string>;
+  state: Generated<string>;
+  type: string;
+  updated_at: Generated<string>;
+}
+
 export interface Log {
   app_id: string | null;
   chat_id: string | null;
@@ -119,6 +135,25 @@ export interface Mailbox {
   external_mailbox_oauth_id: string | null;
   todo_count: Generated<number>;
   updated_at: Generated<string>;
+}
+
+export interface MailboxEmail {
+  bcc_recipients: Generated<string>;
+  body: string | null;
+  cc_recipients: Generated<string>;
+  conversation_id: string | null;
+  conversation_index: string | null;
+  created_date_time: string | null;
+  external_id: string | null;
+  from: string | null;
+  has_attachments: Generated<number>;
+  id: string;
+  is_draft: Generated<number>;
+  mailbox_email: string;
+  received_date_time: string | null;
+  sent_date_time: string | null;
+  subject: string;
+  to_recipients: Generated<string>;
 }
 
 export interface Mcpkey {
@@ -231,8 +266,10 @@ export interface DB {
   datastore: Datastore;
   external_mailbox_oauth: ExternalMailboxOauth;
   invitation: Invitation;
+  job: Job;
   log: Log;
   mailbox: Mailbox;
+  mailbox_email: MailboxEmail;
   mcpkey: Mcpkey;
   member: Member;
   migration: Migration;

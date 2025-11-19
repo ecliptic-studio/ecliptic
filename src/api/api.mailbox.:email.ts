@@ -15,7 +15,7 @@ export const apiMailboxEmail: Partial<Record<Serve.HTTPMethod, Serve.Handler<Bun
 		const [result, error] = await listMailboxEmailsController({
 			session: auth.session,	
 			db: kysely
-		}, { email: req.params.email })
+		}, { mailboxEmail: req.params.email })
 
 		if (error)
 			return toErrorResponse({req, auth, lang, error})

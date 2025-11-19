@@ -20,5 +20,3 @@ CREATE TABLE IF NOT EXISTS mailbox (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
--- Indexes for mailbox table
-CREATE INDEX IF NOT EXISTS idx_mailbox_external_mailbox_oauth_id ON mailbox(external_mailbox_oauth_id);
