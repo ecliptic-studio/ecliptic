@@ -11,6 +11,7 @@ import { apiMcpKeysId } from './api/api.mcp-keys.:id'
 import { apiPermission } from './api/api.permission'
 import { authMicrosoft } from './api/auth.microsoft'
 import { auth } from './auth'
+import { startJobLoop } from './jobs/scheduler'
 
 
 const server = Bun.serve({
@@ -49,5 +50,7 @@ const server = Bun.serve({
 
 
 });
+
+startJobLoop();
 
 console.log(`Server running at ${server.url}`);
