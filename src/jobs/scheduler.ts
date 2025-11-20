@@ -1,85 +1,63 @@
 import { kysely } from "@server/db";
-import type { Job } from "@server/db.d";
-import type { Selectable } from "kysely";
+import type { TJob, TJobType } from "@server/dto/TJob";
 import { sql } from "kysely";
+import type { TJobResult } from "./job.typs";
 
-type JobRow = Selectable<Job> & { id: number };
 
 // Pick the next runnable job:
 // - unlocked pending/failed rows ready to run
 // - or stale processing rows whose lock is older than 1 hour (runner likely died)
-async function pullNextJob(lockedBy = "scheduler"): Promise<JobRow | null> {
+async function pullNextJob(lockedBy = "scheduler"): Promise<TJob | null> {
   const staleLockThreshold = sql<string>`datetime(CURRENT_TIMESTAMP, '-1 hour')`;
 
-  return kysely.transaction().execute(async (trx) => {
-    const job = await trx
-      .with("next_job", (db) =>
-        db
-          .selectFrom("job")
-          .select(["id"])
-          .where((eb) =>
-            eb.or([
-              eb.and([
-                eb("state", "in", ["pending", "failed"]),
-                eb("locked_at", "is", null),
-              ]),
-              eb.and([
-                eb("state", "=", "processing"),
-                eb("locked_at", "<", staleLockThreshold),
-              ]),
-            ]),
-          )
-          .whereRef("attempts", "<", "max_attempts")
-          .where("runs_after", "<=", sql<string>`CURRENT_TIMESTAMP`)
-          .orderBy("runs_after", "asc")
-          .orderBy("id", "asc")
-          .limit(1),
+  const jobDb = await kysely.with("next_job", (db) =>
+    db
+      .selectFrom("job")
+      .select(["id"])
+      .where((eb) =>
+        eb.or([
+          eb.and([
+            eb("state", "in", ["pending", "failed"]),
+            eb("locked_at", "is", null),
+          ]),
+          eb.and([
+            eb("state", "=", "processing"),
+            eb("locked_at", "<", staleLockThreshold),
+          ]),
+        ]),
       )
-      .updateTable("job")
-      .set({
-        state: "processing",
-        locked_by: lockedBy,
-        locked_at: sql`CURRENT_TIMESTAMP`,
-        updated_at: sql`CURRENT_TIMESTAMP`,
-        attempts: sql`attempts + 1`,
-      })
-      .where("id", "in", (eb) =>
-        eb.selectFrom("next_job").select("next_job.id"),
-      )
-      .returningAll()
-      .executeTakeFirst();
+      .whereRef("attempts", "<", "max_attempts")
+      .where("runs_after", "<=", sql<string>`CURRENT_TIMESTAMP`)
+      .orderBy("runs_after", "asc")
+      .orderBy("id", "asc")
+      .limit(1),
+  )
+    .updateTable("job")
+    .set({
+      state: "processing",
+      locked_by: lockedBy,
+      locked_at: sql`CURRENT_TIMESTAMP`,
+      updated_at: sql`CURRENT_TIMESTAMP`,
+      attempts: sql`attempts + 1`,
+    })
+    .where("id", "in", (eb) =>
+      eb.selectFrom("next_job").select("next_job.id"),
+    )
+    .returningAll()
+    .executeTakeFirst();
+  if(!jobDb) return null;
 
-    if (!job || job.id == null) {
-      return null;
-    }
+  return {
+    ...jobDb,
+    payload: JSON.parse(jobDb.payload),
+    type: jobDb.type as TJobType,
+    state: jobDb.state as 'pending' | 'failed' | 'processing' | 'completed',
+  }
 
-    return job as JobRow;
-  });
+
 }
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-async function runJob(runnerId: string) {
-  // console.log('runJob ' + new Date().toTimeString().slice(0, 8));
-  // TODO: orchestrate worker loops once job handlers exist.
-  while(true) {
-    console.log(`${runnerId} waiting for job`);
-    const job = await pullNextJob(runnerId);
-    if(job == null) {
-      await wait(1000);
-      continue;
-    }
-
-    console.log(`${runnerId} running job ${job.id}`);
-    try {
-      // TODO: execute job handler based on job.type
-      await markJobSuccess(job.id);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await markJobFailure(job, message);
-    }
-  }
-}
 
 async function markJobSuccess(jobId: number) {
   await kysely
@@ -94,7 +72,7 @@ async function markJobSuccess(jobId: number) {
     .executeTakeFirst();
 }
 
-async function markJobFailure(job: JobRow, errorMessage: string, retryDelaySeconds = 60) {
+async function markJobFailure(job: TJob, errorMessage: string, retryDelaySeconds = 60) {
   const hasRetriesRemaining = job.attempts < job.max_attempts;
   const nextState = hasRetriesRemaining ? "failed" : "dead";
   const retryWindow = `${retryDelaySeconds} seconds`;
@@ -114,6 +92,52 @@ async function markJobFailure(job: JobRow, errorMessage: string, retryDelaySecon
 
   await updateBuilder.executeTakeFirst();
 }
+
+async function spawnRunner(runnerId: string, job: TJob) {
+  const childProc = Bun.spawn(["bun", "src/jobs/runner.ts", JSON.stringify(job)], {
+    async ipc(message: TJobResult, childProc) {
+      if(message.error) {
+        await markJobFailure(job, message.error);
+      } else {
+        await markJobSuccess(job.id)
+      }
+
+    },
+    async onExit(subprocess, exitCode, signalCode, error) {
+      if(exitCode !== 0) {
+        await markJobFailure(job, 'Runner exited with code ' + exitCode + ' ' + signalCode + ' ' + error);
+      }
+    },
+
+    timeout: 1000,// * 60 * 5, // 5 minutes
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  
+  await childProc.exited
+}
+
+async function runJob(runnerId: string) {
+  // console.log('runJob ' + new Date().toTimeString().slice(0, 8));
+  // TODO: orchestrate worker loops once job handlers exist.
+  while (true) {
+    console.log(`${runnerId} waiting for job`);
+    const job = await pullNextJob(runnerId);
+    if (job == null) {
+      await wait(1000);
+      continue;
+    }
+
+    console.log(`${runnerId} running job ${job.id}`);
+    try {
+      await spawnRunner(runnerId, job);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await markJobFailure(job, message);
+    }
+  }
+}
+
 
 export function startJobLoop() {
   runJob('runner-1');

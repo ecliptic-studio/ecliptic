@@ -6,15 +6,11 @@ import type { TErrTuple } from "@server/error/error-code.types";
 import { createError } from "@server/error/t-error";
 import { createGraphClientFx } from "@server/subroutines/microsoft/graph-client.fx";
 import { pullMailsFx } from "@server/subroutines/microsoft/pull-mails.fx";
-import type { InsertType, Selectable } from "kysely";
 import type { InsertExpression } from "node_modules/kysely/dist/esm/parser/insert-values-parser";
+import type { TJobResult } from "./job.typs";
+import type { Selectable } from "kysely";
 
-type TJobResult = {
-  newJobs: TJob[];
-  insertedEmails: Selectable<MailboxEmail>[];
-}
-
-export async function jobPullEmailsFromMicrosoft(portal: { db: TKysely }, args: {job: TJob<'pull-emails-from-microsoft'>}): Promise<TErrTuple<TJobResult>> {
+export async function jobPullEmailsFromMicrosoft(portal: { db: TKysely }, args: {job: TJob<'pull-emails-from-microsoft'>}): Promise<TErrTuple<TJobResult<Selectable<MailboxEmail>[]>>> {
   const mailbox = await portal.db.selectFrom('mailbox')
   .innerJoin('external_mailbox_oauth', 'mailbox.external_mailbox_oauth_id', 'external_mailbox_oauth.id')
   .where('email', '=', args.job.payload.mailboxEmail)
@@ -85,6 +81,7 @@ export async function jobPullEmailsFromMicrosoft(portal: { db: TKysely }, args: 
 
   return [{
     newJobs,
-    insertedEmails,
+    result: insertedEmails,
+    error: null,
   }, null];
 }

@@ -1,6 +1,6 @@
 -- Jobs table
 CREATE TABLE IF NOT EXISTS job (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     type TEXT NOT NULL,                -- Type/category of job
     payload TEXT NOT NULL,             -- JSON payload string
     state TEXT NOT NULL CHECK (

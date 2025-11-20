@@ -96,7 +96,7 @@ export interface Job {
   completed_at: string | null;
   created_at: Generated<string>;
   error_message: string | null;
-  id: Generated<number | null>;
+  id: Generated<number>;
   locked_at: string | null;
   locked_by: string | null;
   max_attempts: Generated<number>;
