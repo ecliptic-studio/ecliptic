@@ -20,6 +20,7 @@ export type TJob<T extends TJobType = TJobType> = {
   state: 'pending' | 'processing' | 'completed' | 'failed';
   created_at: string;
   updated_at: string;
+  runs_after: string;
   locked_by: string | null;
   locked_at: string | null;
   attempts: number;

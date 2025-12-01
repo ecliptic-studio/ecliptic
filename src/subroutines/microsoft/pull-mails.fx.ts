@@ -1,6 +1,7 @@
 import type { GraphServiceClient } from "@microsoft/msgraph-sdk";
+import "@microsoft/msgraph-sdk-users";
 import type { DeltaGetResponse } from "@microsoft/msgraph-sdk-users/users/item/mailFolders/item/messages/delta";
-import type { Recipient, Event } from "@microsoft/msgraph-sdk/models";
+import type { Recipient } from "@microsoft/msgraph-sdk/models";
 import { ErrorCode } from "@server/error/error-code.enum";
 import type { TErrTuple } from "@server/error/error-code.types";
 import { createError } from "@server/error/t-error";
@@ -59,7 +60,7 @@ export async function pullMailsFx(portal: { graphClient: GraphServiceClient }, a
     messages = await portal.graphClient.users.byUserId(args.mailboxEmail).mailFolders.byMailFolderId('inbox')
     .messages.delta.get({
       queryParameters: {
-        select: ['id', 'subject', 'body', 'receivedDateTime', 'from', 'bccRecipients', 'ccRecipients', 'toRecipients', 'conversationIndex', 'conversationId', 'hasAttachments', 'createdDateTime', 'sentDateTime', 'isDraft'],
+        // select: ['id', 'subject', 'body', 'receivedDateTime', 'from', 'bccRecipients', 'ccRecipients', 'toRecipients', 'conversationIndex', 'conversationId', 'hasAttachments', 'createdDateTime', 'sentDateTime', 'isDraft'],
         expand: ['microsoft.graph.eventMessage/event', 'attachments']
       },
     })

@@ -1,5 +1,6 @@
 import { createGraphServiceClient, GraphRequestAdapter } from "@microsoft/msgraph-sdk";
 import { kysely } from "@server/db";
+import type { TJob } from "@server/dto/TJob";
 import { decryptFn } from "@server/subroutines/encryption.fn";
 import { checkMailboxAccessFx } from "@server/subroutines/microsoft/check-mailbox-access.fx";
 import { exchangeCodeForTokenFx } from "@server/subroutines/microsoft/oauth.fx";
@@ -150,6 +151,18 @@ export const authMicrosoft: Serve.Handler<BunRequest<'/auth/microsoft'>, Server<
       })
       .execute();
   }
+
+  const job: Pick<TJob<'pull-emails-from-microsoft'>, 'type' | 'payload' | 'state'> = {
+    payload: {mailboxEmail: decryptedState.email},
+    type: 'pull-emails-from-microsoft',
+    state: 'pending'
+    
+  }
+
+  await kysely.insertInto('job').values({
+    ...job,
+    payload: JSON.stringify(job.payload),
+  }).execute();
 
   return Response.redirect(`/mailbox?message=${encodeURIComponent('Mailbox connected successfully!')}`)
 }

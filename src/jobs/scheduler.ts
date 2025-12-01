@@ -18,16 +18,22 @@ async function pullNextJob(lockedBy = "scheduler"): Promise<TJob | null> {
         eb.or([
           eb.and([
             eb("state", "in", ["pending", "failed"]),
-            eb("locked_at", "is", null),
+            eb.or([
+              eb("locked_at", "is", null),
+              eb("locked_at", "<", staleLockThreshold),
+            ]),
           ]),
           eb.and([
             eb("state", "=", "processing"),
-            eb("locked_at", "<", staleLockThreshold),
+            eb.or([
+              eb("locked_at", "is", null),
+              eb("locked_at", "<", staleLockThreshold),
+            ]),
           ]),
         ]),
       )
       .whereRef("attempts", "<", "max_attempts")
-      .where("runs_after", "<=", sql<string>`CURRENT_TIMESTAMP`)
+      .where(sql<string>`datetime(runs_after)`, "<=", sql<string>`CURRENT_TIMESTAMP`)
       .orderBy("runs_after", "asc")
       .orderBy("id", "asc")
       .limit(1),
@@ -45,7 +51,7 @@ async function pullNextJob(lockedBy = "scheduler"): Promise<TJob | null> {
     )
     .returningAll()
     .executeTakeFirst();
-  if(!jobDb) return null;
+  if (!jobDb) return null;
 
   return {
     ...jobDb,
@@ -96,7 +102,13 @@ async function markJobFailure(job: TJob, errorMessage: string, retryDelaySeconds
 async function spawnRunner(runnerId: string, job: TJob) {
   const childProc = Bun.spawn(["bun", "src/jobs/runner.ts", JSON.stringify(job)], {
     async ipc(message: TJobResult, childProc) {
-      if(message.error) {
+      message.newJobs.forEach(async (newJob) => {
+        await kysely.insertInto('job').values({
+          ...newJob,
+          payload: JSON.stringify(newJob.payload),
+        }).execute();
+      })
+      if (message.error) {
         await markJobFailure(job, message.error);
       } else {
         await markJobSuccess(job.id)
@@ -104,16 +116,16 @@ async function spawnRunner(runnerId: string, job: TJob) {
 
     },
     async onExit(subprocess, exitCode, signalCode, error) {
-      if(exitCode !== 0) {
+      if (exitCode !== 0) {
         await markJobFailure(job, 'Runner exited with code ' + exitCode + ' ' + signalCode + ' ' + error);
       }
     },
 
-    timeout: 1000,// * 60 * 5, // 5 minutes
+    timeout: 1000 * 60 * 5, // 5 minutes
     stdout: "inherit",
     stderr: "inherit",
   });
-  
+
   await childProc.exited
 }
 
@@ -121,7 +133,6 @@ async function runJob(runnerId: string) {
   // console.log('runJob ' + new Date().toTimeString().slice(0, 8));
   // TODO: orchestrate worker loops once job handlers exist.
   while (true) {
-    console.log(`${runnerId} waiting for job`);
     const job = await pullNextJob(runnerId);
     if (job == null) {
       await wait(1000);
